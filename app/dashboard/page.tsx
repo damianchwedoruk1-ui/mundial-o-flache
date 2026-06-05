@@ -2367,23 +2367,7 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-
-          {savedPodiumPrediction ? (
-            <div
-              className="card"
-              style={{
-                padding: "18px",
-                borderRadius: "18px",
-                background: "rgba(21, 128, 61, 0.22)",
-                border: "1px solid rgba(34, 197, 94, 0.35)",
-              }}
-            >
-              <strong>Typ podium zaakceptowany ✅</strong>
-              <p className="muted" style={{ marginTop: "8px", marginBottom: 0 }}>
-                1. {savedPodiumPrediction.firstPlace} · 2. {savedPodiumPrediction.secondPlace} · 3. {savedPodiumPrediction.thirdPlace}
-              </p>
-            </div>
-          ) : (
+          {
             <div
               style={{
                 display: "grid",
