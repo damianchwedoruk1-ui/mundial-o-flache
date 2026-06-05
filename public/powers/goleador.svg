@@ -1,0 +1,15 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="green" x1="17" y1="15" x2="111" y2="113" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset=".45" stop-color="#22C55E"/><stop offset="1" stop-color="#15803D"/></linearGradient>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<circle cx="64" cy="64" r="52" fill="#0F172A" stroke="url(#green)" stroke-width="5" filter="url(#glow)"/>
+<path d="M64 24L78 38L72 56H56L50 38L64 24Z" fill="white"/>
+<path d="M34 45L50 38L56 56L44 68L29 61L34 45Z" fill="white"/>
+<path d="M94 45L78 38L72 56L84 68L99 61L94 45Z" fill="white"/>
+<path d="M44 68L56 56H72L84 68L77 88H51L44 68Z" fill="#111827"/>
+<path d="M29 61L44 68L51 88L39 96L27 81L29 61Z" fill="#111827"/>
+<path d="M99 61L84 68L77 88L89 96L101 81L99 61Z" fill="#111827"/>
+<path d="M39 96L51 88H77L89 96L76 107H52L39 96Z" fill="white"/>
+<circle cx="64" cy="64" r="50" stroke="white" stroke-opacity=".25" stroke-width="2"/>
+</svg>

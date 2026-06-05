@@ -1,0 +1,247 @@
+:root {
+  --bg: #070b18;
+  --panel: rgba(17, 24, 48, 0.88);
+  --panel2: rgba(25, 35, 68, 0.82);
+  --text: #f4f7ff;
+  --muted: #9aa7c7;
+  --green: #37d67a;
+  --red: #ff5570;
+  --gold: #ffd166;
+  --violet: #9b5cff;
+  --blue: #49a7ff;
+  --border: rgba(255,255,255,.1);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    url("/stadium-bg.jpg") center top / cover no-repeat fixed;
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(2, 6, 23, .10) 0%,
+      rgba(2, 6, 23, .06) 38%,
+      rgba(2, 6, 23, .16) 100%
+    );
+}
+
+body::after {
+  content: none;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; }
+.page { max-width: 1280px; margin: 0 auto; padding: 28px; position: relative; }
+.hero {
+  position: relative;
+  overflow: hidden;
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:center;
+  padding:24px;
+  border:1px solid rgba(255,255,255,.13);
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255, 209, 102, .16), transparent 28%),
+    radial-gradient(circle at 18% 12%, rgba(73, 167, 255, .15), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+  border-radius:24px;
+  box-shadow:0 20px 70px rgba(0,0,0,.35);
+}
+
+.hero::after { content: none; }
+.eyebrow { margin:0 0 6px; color:var(--gold); text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:700; }
+h1, h2, h3, p { margin-top:0; }
+.muted { color: var(--muted); }
+.grid { display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; margin-top:18px; }
+.panel {
+  background: linear-gradient(145deg, rgba(17, 24, 48, .92), rgba(17, 24, 48, .78));
+  border:1px solid rgba(255,255,255,.105);
+  border-radius:20px;
+  padding:18px;
+  box-shadow:0 14px 45px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+}
+.panel-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.panel-header h2 { margin:0; font-size:19px; }
+.card-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+.status-card, .match-card, .result-card, .standing-row, .log-row { background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:13px; }
+.standing-row { display:grid; grid-template-columns:42px 1fr auto auto; gap:10px; align-items:center; margin-bottom:10px; }
+.place { width:32px; height:32px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,.1); font-weight:800; }
+.first { background:linear-gradient(135deg, #ffe08a, #ffb703); color:#151515; }
+.points { color:var(--gold); font-weight:800; }
+.exact { color:var(--muted); }
+.status-card { display:flex; align-items:center; gap:12px; }
+.dot { width:12px; height:12px; border-radius:50%; box-shadow:0 0 16px currentColor; }
+.dot.done { color:var(--green); background:var(--green); }
+.dot.waiting { color:var(--red); background:var(--red); }
+.dot.power { color:var(--violet); background:var(--violet); }
+.match-card { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; margin-bottom:10px; }
+.teams { font-size:18px; font-weight:800; }
+.score-inputs { display:flex; align-items:center; gap:8px; }
+.score-inputs input { width:58px; padding:10px; border-radius:12px; border:1px solid var(--border); background:#0d142b; color:var(--text); text-align:center; }
+.btn { border:0; border-radius:14px; padding:11px 16px; background:linear-gradient(135deg, var(--blue), var(--violet)); color:white; font-weight:800; cursor:pointer; transition:.2s transform, .2s filter; }
+.btn:hover { transform:translateY(-2px); filter:brightness(1.08); }
+.btn.secondary { background:rgba(255,255,255,.1); }
+.power-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; }
+.power-card { position:relative; overflow:hidden; min-height:136px; padding:14px; border-radius:18px; border:1px solid var(--border); background:linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.03)); transition:.22s transform, .22s box-shadow; cursor:pointer; }
+.power-card:hover { transform:translateY(-5px) rotate(-1deg); box-shadow:0 18px 45px rgba(0,0,0,.35); }
+.power-card.legendary { border-color:rgba(255,209,102,.55); box-shadow:0 0 26px rgba(255,209,102,.12); }
+.power-card.epic { border-color:rgba(155,92,255,.6); box-shadow:0 0 26px rgba(155,92,255,.12); }
+.power-card.rare { border-color:rgba(73,167,255,.55); }
+.power-icon { font-size:36px; }
+.power-name { font-weight:900; margin-top:8px; }
+.power-desc { color:var(--muted); font-size:13px; margin-top:4px; }
+.badge { display:inline-flex; padding:5px 9px; border-radius:999px; background:rgba(255,255,255,.1); color:var(--muted); font-size:12px; font-weight:800; }
+.login-box { max-width:460px; margin:80px auto; }
+.form { display:grid; gap:12px; }
+.form input { padding:14px; border-radius:14px; border:1px solid var(--border); background:#0d142b; color:var(--text); }
+@media (max-width: 900px) {
+  .page { padding: 18px; }
+  .grid { grid-template-columns:1fr; }
+  .power-grid, .card-grid { grid-template-columns:1fr; }
+  .hero { flex-direction:column; align-items:flex-start; }
+  .panel-header { align-items: flex-start; flex-direction: column; }
+}
+
+
+.regulamin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 11px 16px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+  color: white;
+  font-weight: 900;
+  transition: .2s transform, .2s filter, .2s background;
+}
+
+.back-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  background: rgba(255,255,255,.14);
+}
+
+.worldcup-kicker {
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+
+body .pitch-glow {
+  position: fixed;
+  inset: auto 0 -220px 0;
+  height: 520px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34,197,94,.18), transparent 58%),
+    radial-gradient(circle at 20% 30%, rgba(22,163,74,.10), transparent 46%),
+    radial-gradient(circle at 80% 30%, rgba(22,163,74,.10), transparent 46%);
+  filter: blur(30px);
+}
+
+
+body {
+  overflow-x: hidden;
+}
+
+body::before {
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+}
+
+.page::before { content: none; }
+
+.hero {
+  border: 1px solid rgba(255, 215, 0, .18) !important;
+}
+
+.hero::before { content: none; }
+
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.08) calc(50% - 1px), rgba(255,255,255,.08) calc(50% + 1px), transparent calc(50% + 1px)),
+    radial-gradient(circle at 50% 78%, transparent 0 180px, rgba(255,255,255,.08) 181px 184px, transparent 185px),
+    linear-gradient(to top, rgba(34,197,94,.22), transparent 40%);
+  opacity: .92;
+}
+
+.hero,
+.panel {
+  background:
+    linear-gradient(145deg, rgba(5, 10, 28, .72), rgba(8, 15, 40, .64)) !important;
+  backdrop-filter: blur(10px);
+}
+
+.hero {
+  border: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04),
+    0 24px 80px rgba(0,0,0,.55);
+}
+
+
+.hero,
+.panel {
+  backdrop-filter: blur(6px);
+}
+
+.panel {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.05),
+    0 12px 45px rgba(0,0,0,.42);
+}
+
+
+/* Mocniejsze tło stadionu i czytelne szklane panele */
+.hero,
+.panel {
+  background:
+    linear-gradient(145deg, rgba(5, 10, 28, .82), rgba(8, 15, 40, .68)) !important;
+  backdrop-filter: blur(5px);
+}
+
+.hero {
+  border: 1px solid rgba(255,255,255,.18) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.48);
+}
+
+.panel {
+  border: 1px solid rgba(255,255,255,.13) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.035),
+    0 14px 45px rgba(0,0,0,.38);
+}
