@@ -150,13 +150,14 @@ function predictionMatchesPlayer(prediction: { user_name?: string; user_email?: 
 }
 
 function getPowerTime(powerName: string) {
-  const morningPowers = ["Vabank", "Rozdwojenie Jaźni", "Goleador", "Blokada"];
+  const morningPowers = ["Vabank", "Rozdwojenie Jaźni", "Goleador"];
 
   const eveningPowers = [
     "Słabiak",
     "Slabiak",
     "Zamianka",
     "Złodziej",
+    "Blokada",
   ];
 
   if (morningPowers.includes(powerName)) return "morning";
@@ -231,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
 type PowerLogType = {
   id: string;
@@ -316,6 +318,23 @@ function getEveningPowerWindow(currentMatchDate: string) {
   closesAt.setHours(20, 0, 0, 0);
 
   return { opensAt, closesAt };
+}
+
+
+function isFullMatchDateFinished(matchDate: string, results: ResultsType) {
+  const matchesForDate = demoMatches.filter((match) => match.date === matchDate);
+
+  if (matchesForDate.length === 0) return false;
+
+  return matchesForDate.every((match) => {
+    const result = results[match.id];
+
+    return (
+      result &&
+      result.homeScore !== "" &&
+      result.awayScore !== ""
+    );
+  });
 }
 
 export default function DashboardPage() {
@@ -721,9 +740,12 @@ export default function DashboardPage() {
 
       if (!result) return;
 
+      const matchDate = getScoringMatchDate(match);
+      const isFinishedDay = isFullMatchDateFinished(matchDate, results);
+
       table.forEach((player) => {
-        if (player.daily_points[getScoringMatchDate(match)] === undefined) {
-          player.daily_points[getScoringMatchDate(match)] = 0;
+        if (player.daily_points[matchDate] === undefined) {
+          player.daily_points[matchDate] = 0;
         }
       });
 
@@ -741,6 +763,7 @@ export default function DashboardPage() {
           );
 
           const hasDoubleForThisMatch =
+            isFinishedDay &&
             p.power_name === "Rozdwojenie Jaźni" &&
             p.power_target_match_id === match.id &&
             p.power_home_score !== null &&
@@ -790,11 +813,11 @@ export default function DashboardPage() {
       );
 
       if (exactHits.length === 1) {
-        addDailyPoints(exactHits[0].user_name, getScoringMatchDate(match), 5);
+        addDailyPoints(exactHits[0].user_name, matchDate, 5);
         addExactHit(exactHits[0].user_name);
       } else if (exactHits.length > 1) {
         exactHits.forEach((hit) => {
-          addDailyPoints(hit.user_name, getScoringMatchDate(match), 4);
+          addDailyPoints(hit.user_name, matchDate, 4);
           addExactHit(hit.user_name);
         });
       } else {
@@ -802,33 +825,35 @@ export default function DashboardPage() {
         const closest = matchPredictions.filter((d) => d.distance === minDistance);
 
         if (closest.length === 1) {
-          addDailyPoints(closest[0].user_name, getScoringMatchDate(match), 2);
+          addDailyPoints(closest[0].user_name, matchDate, 2);
         } else {
           closest.forEach((hit) => {
-            addDailyPoints(hit.user_name, getScoringMatchDate(match), 1);
+            addDailyPoints(hit.user_name, matchDate, 1);
           });
         }
       }
 
-      matchPredictions.forEach((prediction) => {
-        if (prediction.power_name !== "Goleador" || !prediction.power_target_team) {
-          return;
-        }
+      if (isFinishedDay) {
+        matchPredictions.forEach((prediction) => {
+          if (prediction.power_name !== "Goleador" || !prediction.power_target_team) {
+            return;
+          }
 
-        let bonus = 0;
+          let bonus = 0;
 
-        if (prediction.power_target_team === match.teamA) {
-          bonus = realHome;
-        }
+          if (prediction.power_target_team === match.teamA) {
+            bonus = realHome;
+          }
 
-        if (prediction.power_target_team === match.teamB) {
-          bonus = realAway;
-        }
+          if (prediction.power_target_team === match.teamB) {
+            bonus = realAway;
+          }
 
-        if (bonus > 0) {
-          addDailyPoints(prediction.user_name, getScoringMatchDate(match), bonus);
-        }
-      });
+          if (bonus > 0) {
+            addDailyPoints(prediction.user_name, matchDate, bonus);
+          }
+        });
+      }
     });
 
     const allMatchDates = Array.from(
@@ -841,6 +866,10 @@ export default function DashboardPage() {
           player.daily_points[matchDate] = 0;
         }
       });
+
+      if (!isFullMatchDateFinished(matchDate, results)) {
+        return;
+      }
 
       const blockedPlayers = new Set<string>();
 
@@ -857,6 +886,19 @@ export default function DashboardPage() {
           if (player) {
             blockedPlayers.add(player.name);
           }
+        }
+      });
+
+      allDailyPowers.forEach((power) => {
+        if (power.power_name !== "Blokada") return;
+        if (power.match_date !== matchDate) return;
+
+        const player = table.find((row) =>
+          predictionBelongsToPlayer(power.user_name, row.name)
+        );
+
+        if (player) {
+          blockedPlayers.add(player.name);
         }
       });
 
@@ -1042,6 +1084,25 @@ export default function DashboardPage() {
             message: `⚽ ${playerName} aktywował Goleadora.`,
           });
         }
+      });
+
+      allDailyPowers.forEach((power) => {
+        if (power.match_date !== matchDate) return;
+        if (power.power_time !== "evening") return;
+        if (power.power_name !== "Blokada") return;
+
+        const playerName = getPlayerNameFromEmail(
+          power.user_email || power.user_name || ""
+        );
+
+        blockedPlayers.add(playerName);
+
+        pushLog({
+          id: `${matchDate}-evening-block-${playerName}`,
+          matchDate,
+          type: "power",
+          message: `🛡️ ${playerName} aktywował Blokadę.`,
+        });
       });
 
       const eveningPowersForDay = allDailyPowers.filter(
