@@ -231,6 +231,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -969,7 +970,29 @@ export default function DashboardPage() {
       new Set(demoMatches.map((match) => match.date).filter(Boolean))
     ) as string[];
 
+    const isPowerLogMatchDateFinished = (matchDate: string) => {
+      const matchesForDate = demoMatches.filter(
+        (match) => match.date === matchDate
+      );
+
+      if (matchesForDate.length === 0) return false;
+
+      return matchesForDate.every((match) => {
+        const result = results[match.id];
+
+        return (
+          result &&
+          result.homeScore !== "" &&
+          result.awayScore !== ""
+        );
+      });
+    };
+
     allMatchDates.forEach((matchDate) => {
+      if (!isPowerLogMatchDateFinished(matchDate)) {
+        return;
+      }
+
       const blockedPlayers = new Set<string>();
 
       allPredictions.forEach((prediction) => {
@@ -1087,7 +1110,7 @@ export default function DashboardPage() {
     });
 
     return logs.reverse();
-  }, [allPredictions, allDailyPowers]);
+  }, [allPredictions, allDailyPowers, results]);
 
   const sortedStandings = useMemo(() => {
     return [...standings].sort(
