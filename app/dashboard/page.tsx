@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// BRACKET_TEAM_PICK_FIX_2026_06_06: wybor druzyn do slotow, znikanie juz wybranych druzyn
 // STATUS_RESET_AFTER_RESULTS_2026_06_06: po wpisaniu wszystkich wynikow status typow sie zeruje
 // STATUS_PHASE_FIX_2026_06_06: statusy resetuja sie per faza dnia, moce wieczorne bez ujawniania nazw
 // BRACKET_VIEW_FIX_2026_06_05: drabinka jako osobny widok z poziomym przewijaniem
@@ -764,6 +765,50 @@ export default function DashboardPage() {
 
   const getScoringMatchDate = (match: any) => match.date;
 
+  const isBracketPlaceholderTeam = (teamName: string) => {
+    return !worldCupTeams.includes(teamName);
+  };
+
+  const getBracketSlotIdForMatchSide = (
+    matchId: number,
+    side: "home" | "away"
+  ) => {
+    return `M${matchId}_${side}`;
+  };
+
+  const getResolvedMatchTeam = (match: any, side: "home" | "away") => {
+    const rawTeamName = side === "home" ? match.teamA : match.teamB;
+    const slotId = getBracketSlotIdForMatchSide(match.id, side);
+
+    return bracketSlots[slotId] || rawTeamName;
+  };
+
+  const getDisplayMatch = (match: any) => ({
+    ...match,
+    teamA: getResolvedMatchTeam(match, "home"),
+    teamB: getResolvedMatchTeam(match, "away"),
+  });
+
+  const matchNeedsTeamSelection = (match: any) => {
+    return (
+      isBracketPlaceholderTeam(match.teamA) ||
+      isBracketPlaceholderTeam(match.teamB)
+    );
+  };
+
+  const getAvailableTeamsForBracketSlot = (slotId: string) => {
+    const selectedTeam = bracketSlots[slotId] || "";
+
+    return worldCupTeams.filter((team) => {
+      if (team === selectedTeam) return true;
+
+      return !Object.entries(bracketSlots).some(
+        ([otherSlotId, otherTeam]) =>
+          otherSlotId !== slotId && otherTeam === team
+      );
+    });
+  };
+
   const standings = useMemo(() => {
     const table = players.map((player) => ({
       name: player.name,
@@ -902,12 +947,14 @@ export default function DashboardPage() {
           }
 
           let bonus = 0;
+          const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
+          const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
 
-          if (prediction.power_target_team === match.teamA) {
+          if (prediction.power_target_team === resolvedHomeTeam) {
             bonus = realHome;
           }
 
-          if (prediction.power_target_team === match.teamB) {
+          if (prediction.power_target_team === resolvedAwayTeam) {
             bonus = realAway;
           }
 
@@ -1058,7 +1105,7 @@ export default function DashboardPage() {
     });
 
     return table;
-  }, [results, allPredictions, allDailyPowers]);
+  }, [results, allPredictions, allDailyPowers, bracketSlots]);
 
   const powerLogs = useMemo<PowerLogType[]>(() => {
     const logs: PowerLogType[] = [];
@@ -2005,8 +2052,11 @@ export default function DashboardPage() {
           }
 
           .bracket-board {
-            min-width: 2052px !important;
-            width: 2052px !important;
+            min-width: 1026px !important;
+            width: 1026px !important;
+            transform: scale(0.5);
+            transform-origin: top left;
+            height: 624px;
           }
         }
 
@@ -2229,7 +2279,7 @@ export default function DashboardPage() {
                               fontWeight: 800,
                             }}
                           >
-                            {match.teamA} - {match.teamB}
+                            {displayMatch.teamA} - {displayMatch.teamB}
                           </td>
 
                           <td
@@ -2685,19 +2735,103 @@ export default function DashboardPage() {
                 <p className="muted">Brak meczów do typowania w aktualnym oknie.</p>
               )}
 
-              {visibleMatches.map((match, index) => (
-                <MatchCard
-                  key={`${match.id}-${index}`}
-                  match={match}
-                  prediction={
-                    predictions[match.id] || {
-                      homeScore: "",
-                      awayScore: "",
-                    }
-                  }
-                  onPredictionChange={handlePredictionChange}
-                />
-              ))}
+              {visibleMatches.map((match, index) => {
+                const displayMatch = getDisplayMatch(match);
+                const homeSlotId = getBracketSlotIdForMatchSide(match.id, "home");
+                const awaySlotId = getBracketSlotIdForMatchSide(match.id, "away");
+
+                return (
+                  <div key={`${match.id}-${index}`} style={{ display: "grid", gap: "10px" }}>
+                    {matchNeedsTeamSelection(match) && (
+                      <div
+                        className="result-card"
+                        style={{
+                          padding: "14px",
+                          borderRadius: "16px",
+                          background: "rgba(15, 23, 42, 0.72)",
+                          border: "1px solid rgba(250, 204, 21, 0.25)",
+                        }}
+                      >
+                        <strong>🏆 Uzupełnij drużyny do meczu pucharowego</strong>
+                        <p className="muted" style={{ margin: "6px 0 10px" }}>
+                          Jeśli drużyny nie są jeszcze znane, mecz i tak pojawi się w typowaniu. Po wyborze drużyny znika ona z kolejnych list.
+                        </p>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "10px",
+                          }}
+                        >
+                          <label style={{ display: "grid", gap: "6px" }}>
+                            <span className="muted">{match.teamA}</span>
+                            <select
+                              value={bracketSlots[homeSlotId] || ""}
+                              onChange={(e) =>
+                                handleBracketSlotChange(homeSlotId, e.target.value)
+                              }
+                              style={{
+                                width: "100%",
+                                padding: "12px",
+                                borderRadius: "12px",
+                                border: "1px solid rgba(250, 204, 21, 0.45)",
+                                background: "rgba(15, 23, 42, 0.95)",
+                                color: "white",
+                                fontWeight: 800,
+                              }}
+                            >
+                              <option value="">Wybierz drużynę</option>
+                              {getAvailableTeamsForBracketSlot(homeSlotId).map((team) => (
+                                <option key={`${homeSlotId}-${team}`} value={team}>
+                                  {team}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label style={{ display: "grid", gap: "6px" }}>
+                            <span className="muted">{match.teamB}</span>
+                            <select
+                              value={bracketSlots[awaySlotId] || ""}
+                              onChange={(e) =>
+                                handleBracketSlotChange(awaySlotId, e.target.value)
+                              }
+                              style={{
+                                width: "100%",
+                                padding: "12px",
+                                borderRadius: "12px",
+                                border: "1px solid rgba(250, 204, 21, 0.45)",
+                                background: "rgba(15, 23, 42, 0.95)",
+                                color: "white",
+                                fontWeight: 800,
+                              }}
+                            >
+                              <option value="">Wybierz drużynę</option>
+                              {getAvailableTeamsForBracketSlot(awaySlotId).map((team) => (
+                                <option key={`${awaySlotId}-${team}`} value={team}>
+                                  {team}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    <MatchCard
+                      match={displayMatch}
+                      prediction={
+                        predictions[match.id] || {
+                          homeScore: "",
+                          awayScore: "",
+                        }
+                      }
+                      onPredictionChange={handlePredictionChange}
+                    />
+                  </div>
+                );
+              })}
 
               {isDoublePowerSelected && (
                 <div
@@ -2891,6 +3025,7 @@ export default function DashboardPage() {
             <div style={{ display: "grid", gap: "10px" }}>
               {savedPredictionRows.map((match) => {
                 const prediction = savedPredictions[match.id];
+                const displayMatch = getDisplayMatch(match);
 
                 return (
                   <div
@@ -2909,8 +3044,8 @@ export default function DashboardPage() {
                   >
                     <span>
                       <img
-                        src={getFlag(match.teamA)}
-                        alt={match.teamA}
+                        src={getFlag(displayMatch.teamA)}
+                        alt={displayMatch.teamA}
                         width={24}
                         height={24}
                         style={{
@@ -2930,8 +3065,8 @@ export default function DashboardPage() {
                     <span style={{ textAlign: "right" }}>
                       {match.teamB}
                       <img
-                        src={getFlag(match.teamB)}
-                        alt={match.teamB}
+                        src={getFlag(displayMatch.teamB)}
+                        alt={displayMatch.teamB}
                         width={24}
                         height={24}
                         style={{
@@ -3257,7 +3392,12 @@ export default function DashboardPage() {
               >
                 <option value="">Wybierz drużynę z dzisiejszych meczów</option>
                 {Array.from(
-                  new Set(visibleMatches.flatMap((match) => [match.teamA, match.teamB]))
+                  new Set(
+                    visibleMatches.flatMap((match) => [
+                      getResolvedMatchTeam(match, "home"),
+                      getResolvedMatchTeam(match, "away"),
+                    ])
+                  )
                 ).map((team) => (
                   <option key={`goleador-${team}`} value={team}>
                     {team}
@@ -3784,7 +3924,7 @@ export default function DashboardPage() {
                           className="wc-team-select"
                         >
                           <option value="">Wybierz</option>
-                          {worldCupTeams.map((team) => (
+                          {getAvailableTeamsForBracketSlot(slotId).map((team) => (
                             <option key={`${slotId}-${team}`} value={team}>
                               {team}
                             </option>
