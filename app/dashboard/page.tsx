@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// STATUS_RESET_AFTER_RESULTS_2026_06_06: po wpisaniu wszystkich wynikow status typow sie zeruje
 // STATUS_PHASE_FIX_2026_06_06: statusy resetuja sie per faza dnia, moce wieczorne bez ujawniania nazw
 // BRACKET_VIEW_FIX_2026_06_05: drabinka jako osobny widok z poziomym przewijaniem
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
@@ -666,6 +667,9 @@ export default function DashboardPage() {
     loadData();
   }, [currentMatchDate]);
 
+  const isCurrentMatchDateFinished =
+    Boolean(currentMatchDate) && isFullMatchDateFinished(currentMatchDate, results);
+
   const isEveningStatusMode =
     Boolean(previousMatchDate) &&
     Boolean(eveningPowerWindow) &&
@@ -699,6 +703,18 @@ export default function DashboardPage() {
         predictionMatchesPlayer(prediction, player.name)
       );
 
+      if (isCurrentMatchDateFinished && !isEveningStatusMode) {
+        return {
+          ...player,
+          statusPhase: "finished" as const,
+          hasPredictions: false,
+          hasPower: false,
+          hasMorningPower: false,
+          hasEveningPower: false,
+          hasPodiumPrediction,
+        };
+      }
+
       if (isEveningStatusMode) {
         return {
           ...player,
@@ -728,6 +744,7 @@ export default function DashboardPage() {
     visibleMatches,
     previousMatchDate,
     isEveningStatusMode,
+    isCurrentMatchDateFinished,
   ]);
 
   const submittedPlayersCount = players.filter((player) =>
@@ -2287,34 +2304,41 @@ export default function DashboardPage() {
           <div className="card-grid">
             {playerStatuses.map((p) => {
               const isEveningPhase = p.statusPhase === "evening";
+              const isFinishedPhase = p.statusPhase === "finished";
 
-              const statusColor = isEveningPhase
-                ? p.hasEveningPower
-                  ? "#60a5fa"
-                  : "#ef4444"
-                : p.hasPredictions
-                  ? p.hasMorningPower
-                    ? "#a855f7"
-                    : "#22c55e"
-                  : "#ef4444";
+              const statusColor = isFinishedPhase
+                ? "#64748b"
+                : isEveningPhase
+                  ? p.hasEveningPower
+                    ? "#60a5fa"
+                    : "#ef4444"
+                  : p.hasPredictions
+                    ? p.hasMorningPower
+                      ? "#a855f7"
+                      : "#22c55e"
+                    : "#ef4444";
 
-              const statusIcon = isEveningPhase
-                ? p.hasEveningPower
-                  ? "🌙"
-                  : "⏳"
-                : p.hasPredictions
-                  ? p.hasMorningPower
-                    ? "⚡"
-                    : "⚽"
-                  : "⏳";
+              const statusIcon = isFinishedPhase
+                ? "✅"
+                : isEveningPhase
+                  ? p.hasEveningPower
+                    ? "🌙"
+                    : "⏳"
+                  : p.hasPredictions
+                    ? p.hasMorningPower
+                      ? "⚡"
+                      : "⚽"
+                    : "⏳";
 
-              const statusText = isEveningPhase
-                ? p.hasEveningPower
-                  ? "Moc wieczorna oddana"
-                  : "Czeka"
-                : p.hasPredictions
-                  ? "Typy oddane"
-                  : "Czeka";
+              const statusText = isFinishedPhase
+                ? "Dzień rozliczony"
+                : isEveningPhase
+                  ? p.hasEveningPower
+                    ? "Moc wieczorna oddana"
+                    : "Czeka"
+                  : p.hasPredictions
+                    ? "Typy oddane"
+                    : "Czeka";
 
               const usedMorningPower = !isEveningPhase && p.hasMorningPower;
               const usedEveningPower = isEveningPhase && p.hasEveningPower;
@@ -2417,7 +2441,11 @@ export default function DashboardPage() {
           </div>
 
           <p className="muted" style={{ marginTop: "14px" }}>
-            {isEveningStatusMode ? (
+            {isCurrentMatchDateFinished && !isEveningStatusMode ? (
+              <>
+                Dzień meczowy rozliczony. Status typów został wyzerowany.
+              </>
+            ) : isEveningStatusMode ? (
               <>
                 Moce wieczorne:{" "}
                 <strong>{playerStatuses.filter((player) => player.hasEveningPower).length}</strong> /{" "}
