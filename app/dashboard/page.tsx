@@ -2148,7 +2148,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          </div>
         </section>
 
         <section className="panel" style={{ minHeight: "auto" }}>
@@ -2368,9 +2367,8 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-          {
-            <div
-              style={{
+          <div
+            style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                 gap: "14px",
@@ -2420,7 +2418,6 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
         </section>
         )}
 
