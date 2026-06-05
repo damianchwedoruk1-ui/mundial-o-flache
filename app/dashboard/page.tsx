@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// BRACKET_VIEW_FIX_2026_06_05: drabinka jako osobny widok z poziomym przewijaniem
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
 type PowerLogType = {
@@ -1932,6 +1933,20 @@ export default function DashboardPage() {
           img {
             max-width: 100%;
           }
+
+          .bracket-scroll {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: visible !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 14px !important;
+          }
+
+          .bracket-board {
+            min-width: 2052px !important;
+            width: 2052px !important;
+          }
         }
 
         @media (max-width: 560px) {
@@ -2055,42 +2070,28 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "18px",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          className="btn"
-          onClick={() => setActiveTab("dashboard")}
-          style={{
-            background:
-              activeTab === "dashboard"
-                ? "linear-gradient(135deg, #2563eb, #7c3aed)"
-                : "rgba(15, 23, 42, 0.8)",
-          }}
-        >
-          📊 Liga
-        </button>
+      {activeTab === "dashboard" && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              marginBottom: "18px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className="btn"
+              onClick={() => setActiveTab("bracket")}
+              style={{
+                background: "linear-gradient(135deg, #f59e0b, #ef4444)",
+              }}
+            >
+              🏆 Drabinka
+            </button>
+          </div>
 
-        <button
-          className="btn"
-          onClick={() => setActiveTab("bracket")}
-          style={{
-            background:
-              activeTab === "bracket"
-                ? "linear-gradient(135deg, #f59e0b, #ef4444)"
-                : "rgba(15, 23, 42, 0.8)",
-          }}
-        >
-          🏆 Drabinka
-        </button>
-      </div>
-
-      <div className="grid" style={{ display: activeTab === "dashboard" ? undefined : "none" }}>
+          <div className="grid">
         <section className="panel" style={{ minHeight: "auto" }}>
           <div className="panel-header" style={{ marginBottom: "10px" }}>
             <h2 style={{ fontSize: "20px" }}>📊 Mundial o flachę</h2>
@@ -3388,10 +3389,22 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
-      </div>
+          </div>
+        </>
+      )}
 
       {activeTab === "bracket" && (
-        <section className="panel" style={{ overflowX: "auto" }}>
+        <section className="panel" style={{ minHeight: "calc(100vh - 24px)", overflow: "hidden" }}>
+          <button
+            className="btn"
+            onClick={() => setActiveTab("dashboard")}
+            style={{
+              marginBottom: "16px",
+              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+            }}
+          >
+            ← Powrót do ligi
+          </button>
           <style>{`
             .wc-bracket-board {
               position: relative;
@@ -3728,6 +3741,8 @@ export default function DashboardPage() {
             );
 
             return (
+              <div className="bracket-scroll">
+            <div className="bracket-board">
               <div className="wc-bracket-board">
                 <svg className="wc-bracket-lines" viewBox="0 0 2052 1248">
                   {[...leftLines, ...rightLines]}
@@ -3794,6 +3809,9 @@ export default function DashboardPage() {
               </div>
             );
           })()}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
