@@ -2334,8 +2334,8 @@ export default function DashboardPage() {
                 ? "Dzień rozliczony"
                 : isEveningPhase
                   ? p.hasEveningPower
-                    ? "Moc wieczorna oddana"
-                    : "Czeka"
+                    ? "Moc wieczorna dodana"
+                    : "Możliwość dodania mocy wieczornej"
                   : p.hasPredictions
                     ? "Typy oddane"
                     : "Czeka";
