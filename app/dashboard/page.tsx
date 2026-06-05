@@ -2014,6 +2014,7 @@ export default function DashboardPage() {
 
           <div style={{ transform: "scale(0.92)", transformOrigin: "top left", width: "108%" }}>
             <Standings rows={standings} />
+          </div>
 
           {arePredictionsRevealed && (
             <div
