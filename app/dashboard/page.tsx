@@ -2267,6 +2267,7 @@ export default function DashboardPage() {
                   <tbody>
                     {visibleMatches.map((match) => {
                       const realResult = results[match.id];
+                      const displayMatch = getDisplayMatch(match);
 
                       return (
                         <tr key={`types-row-${match.id}`}>
@@ -3146,7 +3147,10 @@ export default function DashboardPage() {
             <p className="muted">Brak meczów dla aktualnego dnia.</p>
           )}
 
-          {visibleMatches.map((match) => (
+          {visibleMatches.map((match) => {
+            const displayMatch = getDisplayMatch(match);
+
+            return (
             <div
               key={`result-${match.id}`}
               className="card"
