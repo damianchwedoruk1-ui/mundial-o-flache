@@ -504,8 +504,8 @@ export default function DashboardPage() {
         power_name: p.power_name || "",
         power_time: p.power_time || "evening",
         target_player: p.target_player || null,
-      ,
-        created_at: p.created_at || null}));
+        created_at: p.created_at || null,
+      }));
 
       setAllDailyPowers(mapped);
     }
