@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// STATUS_PHASE_FIX_2026_06_06: statusy resetuja sie per faza dnia, moce wieczorne bez ujawniania nazw
 // BRACKET_VIEW_FIX_2026_06_05: drabinka jako osobny widok z poziomym przewijaniem
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
@@ -665,26 +666,69 @@ export default function DashboardPage() {
     loadData();
   }, [currentMatchDate]);
 
+  const isEveningStatusMode =
+    Boolean(previousMatchDate) &&
+    Boolean(eveningPowerWindow) &&
+    now >= eveningPowerWindow!.opensAt &&
+    now <= eveningPowerWindow!.closesAt;
+
   const playerStatuses = useMemo(() => {
+    const currentMatchIds = visibleMatches.map((match) => match.id);
+
     return players.map((player) => {
-      const playerPredictions = allPredictions.filter((p) =>
-        predictionMatchesPlayer(p, player.name)
+      const currentDayPredictions = allPredictions.filter(
+        (prediction) =>
+          currentMatchIds.includes(prediction.match_id) &&
+          predictionMatchesPlayer(prediction, player.name)
       );
 
-      const hasPredictions = playerPredictions.length > 0;
-      const hasPower = playerPredictions.some((p) => Boolean(p.power_name));
-      const hasPodiumPrediction = allPodiumPredictions.some((p) =>
-        predictionMatchesPlayer(p, player.name)
+      const usedMorningPower = currentDayPredictions.some(
+        (prediction) =>
+          prediction.power_name &&
+          getPowerTime(prediction.power_name) === "morning"
       );
+
+      const usedEveningPower = allDailyPowers.some(
+        (power) =>
+          power.match_date === previousMatchDate &&
+          power.power_time === "evening" &&
+          predictionBelongsToPlayer(power.user_name, player.name)
+      );
+
+      const hasPodiumPrediction = allPodiumPredictions.some((prediction) =>
+        predictionMatchesPlayer(prediction, player.name)
+      );
+
+      if (isEveningStatusMode) {
+        return {
+          ...player,
+          statusPhase: "evening" as const,
+          hasPredictions: false,
+          hasPower: usedEveningPower,
+          hasMorningPower: false,
+          hasEveningPower: usedEveningPower,
+          hasPodiumPrediction,
+        };
+      }
 
       return {
         ...player,
-        hasPredictions,
-        hasPower,
+        statusPhase: "morning" as const,
+        hasPredictions: currentDayPredictions.length > 0,
+        hasPower: usedMorningPower,
+        hasMorningPower: usedMorningPower,
+        hasEveningPower: false,
         hasPodiumPrediction,
       };
     });
-  }, [allPredictions, allPodiumPredictions]);
+  }, [
+    allPredictions,
+    allDailyPowers,
+    allPodiumPredictions,
+    visibleMatches,
+    previousMatchDate,
+    isEveningStatusMode,
+  ]);
 
   const submittedPlayersCount = players.filter((player) =>
     allPredictions.some(
@@ -1944,11 +1988,8 @@ export default function DashboardPage() {
           }
 
           .bracket-board {
-            min-width: 1026px !important;
-            width: 1026px !important;
-            transform: scale(0.5);
-            transform-origin: top left;
-            height: 624px;
+            min-width: 2052px !important;
+            width: 2052px !important;
           }
         }
 
@@ -2245,38 +2286,38 @@ export default function DashboardPage() {
 
           <div className="card-grid">
             {playerStatuses.map((p) => {
-              const statusColor = p.hasPredictions
-                ? p.hasPower
-                  ? "#a855f7"
-                  : "#22c55e"
-                : "#ef4444";
+              const isEveningPhase = p.statusPhase === "evening";
 
-              const statusIcon = p.hasPredictions
-                ? p.hasPower
-                  ? "⚡"
-                  : "⚽"
-                : "⏳";
+              const statusColor = isEveningPhase
+                ? p.hasEveningPower
+                  ? "#60a5fa"
+                  : "#ef4444"
+                : p.hasPredictions
+                  ? p.hasMorningPower
+                    ? "#a855f7"
+                    : "#22c55e"
+                  : "#ef4444";
 
-              const statusText = p.hasPredictions
-                ? p.hasPower
+              const statusIcon = isEveningPhase
+                ? p.hasEveningPower
+                  ? "🌙"
+                  : "⏳"
+                : p.hasPredictions
+                  ? p.hasMorningPower
+                    ? "⚡"
+                    : "⚽"
+                  : "⏳";
+
+              const statusText = isEveningPhase
+                ? p.hasEveningPower
+                  ? "Moc wieczorna oddana"
+                  : "Czeka"
+                : p.hasPredictions
                   ? "Typy oddane"
-                  : "Typy oddane"
-                : "Czeka";
+                  : "Czeka";
 
-              const usedMorningPower = allPredictions.find(
-                (prediction) =>
-                  visibleMatches.some((match) => match.id === prediction.match_id) &&
-                  predictionMatchesPlayer(prediction, p.name) &&
-                  prediction.power_name &&
-                  getPowerTime(prediction.power_name) === "morning"
-              );
-
-              const usedEveningPower = allDailyPowers.find(
-                (power) =>
-                  power.match_date === previousMatchDate &&
-                  power.power_time === "evening" &&
-                  predictionBelongsToPlayer(power.user_name, p.name)
-              );
+              const usedMorningPower = !isEveningPhase && p.hasMorningPower;
+              const usedEveningPower = isEveningPhase && p.hasEveningPower;
 
               return (
                 <div className="status-card" key={p.id}>
@@ -2376,8 +2417,18 @@ export default function DashboardPage() {
           </div>
 
           <p className="muted" style={{ marginTop: "14px" }}>
-            Oddane typy: <strong>{submittedPlayersCount}</strong> /{" "}
-            <strong>{players.length}</strong>
+            {isEveningStatusMode ? (
+              <>
+                Moce wieczorne:{" "}
+                <strong>{playerStatuses.filter((player) => player.hasEveningPower).length}</strong> /{" "}
+                <strong>{players.length}</strong>
+              </>
+            ) : (
+              <>
+                Oddane typy: <strong>{submittedPlayersCount}</strong> /{" "}
+                <strong>{players.length}</strong>
+              </>
+            )}
           </p>
           {arePredictionsRevealed && (
             <div
