@@ -3172,14 +3172,14 @@ export default function DashboardPage() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <img
-                    src={getFlag(match.teamA)}
-                    alt={match.teamA}
+                    src={getFlag(displayMatch.teamA)}
+                    alt={displayMatch.teamA}
                     width={34}
                     height={34}
                     style={{ borderRadius: "50%", objectFit: "cover" }}
                   />
 
-                  <strong>{match.teamA}</strong>
+                  <strong>{displayMatch.teamA}</strong>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -3236,11 +3236,11 @@ export default function DashboardPage() {
                     gap: "10px",
                   }}
                 >
-                  <strong>{match.teamB}</strong>
+                  <strong>{displayMatch.teamB}</strong>
 
                   <img
-                    src={getFlag(match.teamB)}
-                    alt={match.teamB}
+                    src={getFlag(displayMatch.teamB)}
+                    alt={displayMatch.teamB}
                     width={34}
                     height={34}
                     style={{ borderRadius: "50%", objectFit: "cover" }}
@@ -3254,7 +3254,8 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
 
         <section className="panel">
