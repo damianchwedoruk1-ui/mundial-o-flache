@@ -1944,8 +1944,11 @@ export default function DashboardPage() {
           }
 
           .bracket-board {
-            min-width: 2052px !important;
-            width: 2052px !important;
+            min-width: 1026px !important;
+            width: 1026px !important;
+            transform: scale(0.5);
+            transform-origin: top left;
+            height: 624px;
           }
         }
 
