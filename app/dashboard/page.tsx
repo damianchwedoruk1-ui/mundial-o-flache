@@ -228,6 +228,7 @@ type DailyPowerType = {
   power_name: string;
   power_time: "morning" | "evening";
   target_player?: string | null;
+  created_at?: string | null;
 };
 
 type PowerLogType = {
@@ -491,9 +492,9 @@ export default function DashboardPage() {
 
   const loadAllDailyPowers = async () => {
     const { data } = await supabase
-    .from("daily_powers")
-    .select("*")
-    .order("created_at", { ascending: true });
+      .from("daily_powers")
+      .select("*")
+      .order("created_at", { ascending: true });
 
     if (data) {
       const mapped = data.map((p: any) => ({
@@ -503,7 +504,8 @@ export default function DashboardPage() {
         power_name: p.power_name || "",
         power_time: p.power_time || "evening",
         target_player: p.target_player || null,
-      }));
+      ,
+        created_at: p.created_at || null}));
 
       setAllDailyPowers(mapped);
     }
@@ -1424,7 +1426,7 @@ export default function DashboardPage() {
     const { error } = await supabase
       .from("predictions")
       .delete()
-      .eq("user_id", activeUser.id)
+      .eq("user_id", user.id)
       .in("match_id", currentMatchIds);
 
     if (error) {
