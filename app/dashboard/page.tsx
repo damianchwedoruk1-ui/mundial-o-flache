@@ -1,5 +1,8 @@
 "use client";
 
+// TEST_FORCE_SECOND_DAY_2026_06_06
+
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -549,7 +552,7 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
-  const currentMatchDate = useMemo(() => getCurrentMatchDate(demoMatches), []);
+  const currentMatchDate = "07.06.2026"; // TEST MODE: wymuszony drugi dzień meczowy
 
   const visibleMatches = useMemo(() => {
     return demoMatches.filter((match) => match.date === currentMatchDate);
@@ -955,7 +958,7 @@ export default function DashboardPage() {
 
   const arePredictionsRevealed = isAfterDeadline || allPlayersSubmitted;
 
-  const isPredictionLocked = false; // TEST MODE
+  const isPredictionLocked = false; // TEST MODE: odblokowane typowanie
 
   const bracketPredictionTableMatches = useMemo(() => {
     const firstRound = knockoutFirstRoundMatches.map((match) => ({
