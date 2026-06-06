@@ -1,6 +1,6 @@
 "use client";
 
-// TEST_FORCE_SECOND_DAY_2026_06_06
+// TEST_THIRD_DAY_UNLOCK_2026_06_06
 
 
 import Link from "next/link";
@@ -552,7 +552,7 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
-  const currentMatchDate = "08.06.2026"; // TEST MODE: wymuszony drugi dzień meczowy
+  const currentMatchDate = "08.06.2026"; // TEST MODE: wymuszony trzeci dzień meczowy
 
   const visibleMatches = useMemo(() => {
     return demoMatches.filter((match) => match.date === currentMatchDate);
