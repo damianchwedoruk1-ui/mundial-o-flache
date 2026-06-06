@@ -432,7 +432,7 @@ function getBettingWindow(matchDate: string) {
   const matchDay = parseMatchDate(matchDate);
   const opensAt = new Date(matchDay);
   opensAt.setDate(opensAt.getDate() - 1);
-  opensAt.setHours(20, 0, 0, 0);
+  opensAt.setHours(0, 0, 0, 0);
 
   const closesAt = new Date(matchDay);
   closesAt.setDate(closesAt.getDate() - 1);

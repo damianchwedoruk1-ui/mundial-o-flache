@@ -80,7 +80,7 @@ export const demoMatches = [
   {
     id: 1,
     group: "Grupa A",
-    date: "06.06.2026",
+    date: "08.06.2026",
     teamA: "Meksyk",
     teamB: "Republika Południowej Afryki",
     time: "18:00",
@@ -89,7 +89,7 @@ export const demoMatches = [
   {
     id: 2,
     group: "Grupa A",
-    date: "06.06.2026",
+    date: "08.06.2026",
     teamA: "Korea Południowa",
     teamB: "Czechy",
     time: "20:00",
@@ -98,7 +98,7 @@ export const demoMatches = [
   {
     id: 3,
     group: "Grupa B",
-    date: "06.06.2026",
+    date: "08.06.2026",
     teamA: "Kanada",
     teamB: "Bośnia i Hercegowina",
     time: "21:00",
@@ -107,7 +107,7 @@ export const demoMatches = [
   {
     id: 4,
     group: "Grupa D",
-    date: "06.06.2026",
+    date: "08.06.2026",
     teamA: "USA",
     teamB: "Paragwaj",
     time: "23:00",
@@ -146,6 +146,42 @@ export const demoMatches = [
     date: "07.06.2026",
     teamA: "Australia",
     teamB: "Turcja",
+    time: "23:30",
+  },
+
+  {
+    id: 9,
+    group: "Grupa E",
+    date: "09.06.2026",
+    teamA: "Niemcy",
+    teamB: "Japonia",
+    time: "18:00",
+  },
+
+  {
+    id: 10,
+    group: "Grupa E",
+    date: "09.06.2026",
+    teamA: "Francja",
+    teamB: "Senegal",
+    time: "20:00",
+  },
+
+  {
+    id: 11,
+    group: "Grupa F",
+    date: "09.06.2026",
+    teamA: "Argentyna",
+    teamB: "Portugalia",
+    time: "22:00",
+  },
+
+  {
+    id: 12,
+    group: "Grupa F",
+    date: "09.06.2026",
+    teamA: "Anglia",
+    teamB: "Holandia",
     time: "23:30",
   },
 ];
