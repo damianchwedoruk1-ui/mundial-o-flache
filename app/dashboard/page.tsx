@@ -257,22 +257,39 @@ function parseMatchDate(matchDate: string) {
 function normalizeMatchDateKey(value: string) {
   if (!value) return "";
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
+  const raw = String(value).trim();
 
-  const parts = value.split(".");
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
 
-  if (parts.length === 3) {
-    const [day, month, year] = parts;
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
 
-  return value;
+  const dotMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+
+  if (dotMatch) {
+    const [, day, month, year] = dotMatch;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  return raw;
 }
 
 function isSameMatchDate(a: string, b: string) {
   return normalizeMatchDateKey(a) === normalizeMatchDateKey(b);
+}
+
+function normalizePowerText(value?: string | null) {
+  return normalizeName(String(value || "")).trim();
+}
+
+function isEveningPowerTime(value?: string | null) {
+  return normalizePowerText(value) === "evening";
+}
+
+function isPower(value: string | null | undefined, expected: string) {
+  return normalizePowerText(value) === normalizePowerText(expected);
 }
 
 function normalizePlayerKey(value: string) {
@@ -288,7 +305,7 @@ function samePlayerName(a: string, b: string) {
   return left === right || left.includes(right) || right.includes(left);
 }
 
-function findPlayerRowByName<T extends { name: string }>(rows: T[], value?: string | null) {
+function findPlayerRowByName<T extends { name: string }>(rows: T[], value?: string | null): T | undefined {
   if (!value) return undefined;
 
   return rows.find((row) => samePlayerName(value, row.name));
@@ -592,9 +609,9 @@ export default function DashboardPage() {
       const mapped = data.map((p: any) => ({
         user_name: getPlayerNameFromEmail(p.user_email || ""),
         user_email: p.user_email || "",
-        match_date: p.match_date || "",
-        power_name: p.power_name || "",
-        power_time: p.power_time || "evening",
+        match_date: String(p.match_date || "").trim(),
+        power_name: String(p.power_name || "").trim(),
+        power_time: String(p.power_time || "evening").trim(),
         target_player: getDailyPowerTargetPlayer(p),
         created_at: p.created_at || null,
       }));
@@ -702,7 +719,7 @@ export default function DashboardPage() {
         const eveningForPreviousDay = dailyPowerData.find(
           (power: any) =>
             isSameMatchDate(power.match_date, previousMatchDate) &&
-            power.power_time === "evening"
+            isEveningPowerTime(power.power_time)
         );
 
         if (eveningForPreviousDay) {
@@ -775,7 +792,7 @@ export default function DashboardPage() {
       const usedEveningPower = allDailyPowers.some(
         (power) =>
           isSameMatchDate(power.match_date, previousMatchDate) &&
-          power.power_time === "evening" &&
+          isEveningPowerTime(power.power_time) &&
           predictionBelongsToPlayer(power.user_name, player.name)
       );
 
@@ -889,7 +906,14 @@ export default function DashboardPage() {
   };
 
   const standings = useMemo(() => {
-    const table = players.map((player) => ({
+    type StandingRowInternal = {
+      name: string;
+      points: number;
+      exact_hits: number;
+      daily_points: Record<string, number>;
+    };
+
+    const table: StandingRowInternal[] = players.map((player) => ({
       name: player.name,
       points: 0,
       exact_hits: 0,
@@ -1059,7 +1083,7 @@ export default function DashboardPage() {
         .filter(
           (power) =>
             isSameMatchDate(power.match_date, matchDate) &&
-            power.power_time === "evening"
+            isEveningPowerTime(power.power_time)
         )
         .sort((a, b) =>
           String(a.created_at || "").localeCompare(String(b.created_at || ""))
@@ -1091,7 +1115,7 @@ export default function DashboardPage() {
       });
 
       allDailyPowers.forEach((power) => {
-        if (power.power_name !== "Blokada") return;
+        if (!isPower(power.power_name, "Blokada")) return;
         if (!isSameMatchDate(power.match_date, matchDate)) return;
 
         const player = findPlayerRowByName(
@@ -1136,7 +1160,7 @@ export default function DashboardPage() {
 
         if (!actor) return;
 
-        if (power.power_name === "Słabiak" || power.power_name === "Slabiak") {
+        if (isPower(power.power_name, "Słabiak")) {
           const unblockedPlayers = table.filter(
             (player) => !blockedPlayers.has(player.name)
           );
@@ -1158,7 +1182,7 @@ export default function DashboardPage() {
           });
         }
 
-        if (power.power_name === "Zamianka" && power.target_player) {
+        if (isPower(power.power_name, "Zamianka") && power.target_player) {
           const target = findPlayerRowByName(table, power.target_player);
 
           if (!target || blockedPlayers.has(target.name)) return;
@@ -1173,7 +1197,7 @@ export default function DashboardPage() {
           target.daily_points[matchDate] = actorPoints;
         }
 
-        if (power.power_name === "Złodziej" && power.target_player) {
+        if (isPower(power.power_name, "Złodziej") && power.target_player) {
           const target = findPlayerRowByName(table, power.target_player);
 
           if (!target || blockedPlayers.has(target.name)) return;
@@ -1284,7 +1308,7 @@ export default function DashboardPage() {
       allDailyPowers.forEach((power) => {
         if (!isSameMatchDate(power.match_date, matchDate)) return;
         if (power.power_time !== "evening") return;
-        if (power.power_name !== "Blokada") return;
+        if (!isPower(power.power_name, "Blokada")) return;
 
         const playerName = getPlayerNameFromEmail(
           power.user_email || power.user_name || ""
@@ -1301,7 +1325,7 @@ export default function DashboardPage() {
       });
 
       const eveningPowersForDay = allDailyPowers.filter(
-        (power) => isSameMatchDate(power.match_date, matchDate) && power.power_time === "evening"
+        (power) => isSameMatchDate(power.match_date, matchDate) && isEveningPowerTime(power.power_time)
       );
 
       eveningPowersForDay.forEach((power) => {
@@ -1309,7 +1333,7 @@ export default function DashboardPage() {
           power.user_email || power.user_name || ""
         );
 
-        if (power.power_name === "Słabiak" || power.power_name === "Slabiak") {
+        if (isPower(power.power_name, "Słabiak")) {
           pushLog({
             id: `${matchDate}-slabiak-${actorName}`,
             matchDate,
@@ -1327,7 +1351,7 @@ export default function DashboardPage() {
           });
         }
 
-        if (power.power_name === "Zamianka" && power.target_player) {
+        if (isPower(power.power_name, "Zamianka") && power.target_player) {
           if (blockedPlayers.has(power.target_player)) {
             pushLog({
               id: `${matchDate}-swap-block-${actorName}-${power.target_player}`,
@@ -1345,7 +1369,7 @@ export default function DashboardPage() {
           }
         }
 
-        if (power.power_name === "Złodziej" && power.target_player) {
+        if (isPower(power.power_name, "Złodziej") && power.target_player) {
           if (blockedPlayers.has(power.target_player)) {
             pushLog({
               id: `${matchDate}-thief-block-${actorName}-${power.target_player}`,
@@ -1483,7 +1507,7 @@ export default function DashboardPage() {
     allDailyPowers.some(
       (power) =>
         isSameMatchDate(power.match_date, previousMatchDate) &&
-        power.power_time === "evening" &&
+        isEveningPowerTime(power.power_time) &&
         predictionBelongsToPlayer(power.user_name, userName)
     );
 
