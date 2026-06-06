@@ -1,6 +1,6 @@
 "use client";
 
-// TEST_THIRD_DAY_UNLOCK_2026_06_06
+// TEST_FORCE_DAY_08_UNLOCKED_2026_06_06
 
 
 import Link from "next/link";
