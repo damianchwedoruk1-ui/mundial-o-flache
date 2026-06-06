@@ -2902,7 +2902,7 @@ export default function DashboardPage() {
               </>
             )}
           </p>
-          {isEveningPowerSettlementClosed && (
+          {powerLogs.length > 0 && (
             <div
               style={{
                 marginTop: "16px",
