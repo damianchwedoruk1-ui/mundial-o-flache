@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// EVENING_POWER_LIVE_SCORE_FIX_2026_06_06: mocne porownywanie graczy i odswiezanie mocy
 // EVENING_CARD_CLEAN_FIX_2026_06_06: oryginalne karty, bez dodatkowego przycisku w karcie
 // BRACKET_TEAM_PICK_FIX_2026_06_06: wybor druzyn do slotow, znikanie juz wybranych druzyn
 // STATUS_RESET_AFTER_RESULTS_2026_06_06: po wpisaniu wszystkich wynikow status typow sie zeruje
@@ -272,6 +273,25 @@ function normalizeMatchDateKey(value: string) {
 
 function isSameMatchDate(a: string, b: string) {
   return normalizeMatchDateKey(a) === normalizeMatchDateKey(b);
+}
+
+function normalizePlayerKey(value: string) {
+  return normalizeName(value || "")
+    .replace(/@.*$/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function samePlayerName(a: string, b: string) {
+  const left = normalizePlayerKey(a);
+  const right = normalizePlayerKey(b);
+
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function findPlayerRowByName<T extends { name: string }>(rows: T[], value?: string | null) {
+  if (!value) return undefined;
+
+  return rows.find((row) => samePlayerName(value, row.name));
 }
 
 function formatShortDate(date: Date) {
@@ -691,6 +711,17 @@ export default function DashboardPage() {
     loadData();
   }, [currentMatchDate]);
 
+  useEffect(() => {
+    const refreshLiveData = async () => {
+      await loadAllPredictions();
+      await loadAllDailyPowers();
+    };
+
+    const intervalId = window.setInterval(refreshLiveData, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const isCurrentMatchDateFinished =
     Boolean(currentMatchDate) && isFullMatchDateFinished(currentMatchDate, results);
 
@@ -1025,8 +1056,9 @@ export default function DashboardPage() {
         if (power.power_name !== "Blokada") return;
         if (!isSameMatchDate(power.match_date, matchDate)) return;
 
-        const player = table.find((row) =>
-          predictionBelongsToPlayer(power.user_name, row.name)
+        const player = findPlayerRowByName(
+          table,
+          power.user_name || power.user_email
         );
 
         if (player) {
@@ -1063,8 +1095,9 @@ export default function DashboardPage() {
       );
 
       eveningPowersForDay.forEach((power) => {
-        const actor = table.find((row) =>
-          predictionBelongsToPlayer(power.user_name, row.name)
+        const actor = findPlayerRowByName(
+          table,
+          power.user_name || power.user_email
         );
 
         if (!actor) return;
@@ -1092,9 +1125,7 @@ export default function DashboardPage() {
         }
 
         if (power.power_name === "Zamianka" && power.target_player) {
-          const target = table.find((row) =>
-            predictionBelongsToPlayer(power.target_player || "", row.name)
-          );
+          const target = findPlayerRowByName(table, power.target_player);
 
           if (!target || blockedPlayers.has(target.name)) return;
 
@@ -1109,9 +1140,7 @@ export default function DashboardPage() {
         }
 
         if (power.power_name === "Złodziej" && power.target_player) {
-          const target = table.find((row) =>
-            predictionBelongsToPlayer(power.target_player || "", row.name)
-          );
+          const target = findPlayerRowByName(table, power.target_player);
 
           if (!target || blockedPlayers.has(target.name)) return;
 
