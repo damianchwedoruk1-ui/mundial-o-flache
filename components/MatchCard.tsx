@@ -105,10 +105,12 @@ export function MatchCard({
           <div
             style={{
               minWidth: 0,
-              textAlign: "left",
+              textAlign: "center",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: "10px",
+              justifyContent: "center",
+              gap: "8px",
             }}
           >
             <img
@@ -125,7 +127,7 @@ export function MatchCard({
 
             <strong
               style={{
-                fontSize: "clamp(15px, 4vw, 22px)",
+                fontSize: "clamp(12px, 3.4vw, 20px)",
                 lineHeight: 1.15,
                 wordBreak: "break-word",
               }}
@@ -200,23 +202,14 @@ export function MatchCard({
           <div
             style={{
               minWidth: 0,
-              textAlign: "right",
+              textAlign: "center",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "flex-end",
-              gap: "10px",
+              justifyContent: "center",
+              gap: "8px",
             }}
           >
-            <strong
-              style={{
-                fontSize: "clamp(15px, 4vw, 22px)",
-                lineHeight: 1.15,
-                wordBreak: "break-word",
-              }}
-            >
-              {match.teamB}
-            </strong>
-
             <img
               src={getFlag(match.teamB)}
               alt={match.teamB}
@@ -228,6 +221,16 @@ export function MatchCard({
                 flexShrink: 0,
               }}
             />
+
+            <strong
+              style={{
+                fontSize: "clamp(12px, 3.4vw, 20px)",
+                lineHeight: 1.15,
+                wordBreak: "break-word",
+              }}
+            >
+              {match.teamB}
+            </strong>
           </div>
         </div>
       </div>
