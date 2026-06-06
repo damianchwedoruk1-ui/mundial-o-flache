@@ -570,7 +570,12 @@ export default function DashboardPage() {
         match_date: p.match_date || "",
         power_name: p.power_name || "",
         power_time: p.power_time || "evening",
-        target_player: p.target_player || null,
+        target_player:
+          p.target_player ||
+          p.target_player_name ||
+          p.target ||
+          p.target_user_name ||
+          null,
         created_at: p.created_at || null,
       }));
 
@@ -1030,7 +1035,20 @@ export default function DashboardPage() {
         }
       });
 
-      if (!isFullMatchDateFinished(matchDate, results)) {
+      const eveningPowersForDay = allDailyPowers
+        .filter(
+          (power) =>
+            isSameMatchDate(power.match_date, matchDate) &&
+            power.power_time === "evening"
+        )
+        .sort((a, b) =>
+          String(a.created_at || "").localeCompare(String(b.created_at || ""))
+        );
+
+      const shouldSettleDate =
+        isFullMatchDateFinished(matchDate, results) || eveningPowersForDay.length > 0;
+
+      if (!shouldSettleDate) {
         return;
       }
 
@@ -1089,10 +1107,6 @@ export default function DashboardPage() {
           player.points += dayPoints * 2;
         }
       });
-
-      const eveningPowersForDay = allDailyPowers.filter(
-        (power) => isSameMatchDate(power.match_date, matchDate) && power.power_time === "evening"
-      );
 
       eveningPowersForDay.forEach((power) => {
         const actor = findPlayerRowByName(
