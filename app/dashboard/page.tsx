@@ -3064,7 +3064,7 @@ export default function DashboardPage() {
                 <div
                   className="card"
                   style={{
-                    padding: "22px",
+                    padding: "clamp(16px, 4vw, 22px)",
                     marginTop: "8px",
                     borderRadius: "22px",
                     background: "rgba(88, 28, 135, 0.35)",
@@ -3393,22 +3393,41 @@ export default function DashboardPage() {
                   display: "grid",
                   gridTemplateColumns: "1fr auto 1fr",
                   alignItems: "center",
-                  gap: "16px",
+                  gap: "clamp(8px, 2.5vw, 16px)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    textAlign: "center",
+                  }}
+                >
                   <img
                     src={getFlag(displayMatch.teamA)}
                     alt={displayMatch.teamA}
                     width={34}
                     height={34}
-                    style={{ borderRadius: "50%", objectFit: "cover" }}
+                    style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
                   />
 
-                  <strong>{displayMatch.teamA}</strong>
+                  <strong
+                    style={{
+                      maxWidth: "100%",
+                      fontSize: "clamp(12px, 3.2vw, 16px)",
+                      lineHeight: 1.15,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {displayMatch.teamA}
+                  </strong>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                   <input
                     type="number"
                     value={results[match.id]?.homeScore || ""}
@@ -3417,7 +3436,7 @@ export default function DashboardPage() {
                     }
                     placeholder="0"
                     style={{
-                      width: "58px",
+                      width: "clamp(46px, 13vw, 58px)",
                       height: "46px",
                       borderRadius: "12px",
                       border: "1px solid rgba(139, 92, 246, 0.9)",
@@ -3440,7 +3459,7 @@ export default function DashboardPage() {
                     }
                     placeholder="0"
                     style={{
-                      width: "58px",
+                      width: "clamp(46px, 13vw, 58px)",
                       height: "46px",
                       borderRadius: "12px",
                       border: "1px solid rgba(99, 102, 241, 0.9)",
@@ -3456,21 +3475,33 @@ export default function DashboardPage() {
 
                 <div
                   style={{
+                    minWidth: 0,
                     display: "flex",
-                    justifyContent: "flex-end",
+                    flexDirection: "column",
                     alignItems: "center",
-                    gap: "10px",
+                    justifyContent: "center",
+                    gap: "8px",
+                    textAlign: "center",
                   }}
                 >
-                  <strong>{displayMatch.teamB}</strong>
-
                   <img
                     src={getFlag(displayMatch.teamB)}
                     alt={displayMatch.teamB}
                     width={34}
                     height={34}
-                    style={{ borderRadius: "50%", objectFit: "cover" }}
+                    style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
                   />
+
+                  <strong
+                    style={{
+                      maxWidth: "100%",
+                      fontSize: "clamp(12px, 3.2vw, 16px)",
+                      lineHeight: 1.15,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {displayMatch.teamB}
+                  </strong>
                 </div>
               </div>
 
