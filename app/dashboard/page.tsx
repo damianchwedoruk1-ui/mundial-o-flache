@@ -468,6 +468,7 @@ export default function DashboardPage() {
     AllPodiumPredictionType[]
   >([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "bracket">("dashboard");
+  const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
   const router = useRouter();
@@ -876,6 +877,64 @@ export default function DashboardPage() {
   const arePredictionsRevealed = isAfterDeadline || allPlayersSubmitted;
 
   const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
+
+  const bracketPredictionTableMatches = useMemo(() => {
+    const firstRound = knockoutFirstRoundMatches.map((match) => ({
+      id: Number(match.id.replace("M", "")),
+      group: "Drabinka — 1/32 finału",
+      date: match.date,
+      time: match.time,
+      teamA: match.homeSlot,
+      teamB: match.awaySlot,
+    }));
+
+    const laterRounds = knockoutLaterRounds.flatMap((round, roundIndex) =>
+      round.items.map((item, itemIndex) => {
+        const [homeSlot = item, awaySlot = ""] = item.split(" vs ");
+
+        return {
+          id: 1000 + roundIndex * 100 + itemIndex,
+          group: `Drabinka — ${round.title}`,
+          date: "",
+          time: "",
+          teamA: homeSlot,
+          teamB: awaySlot,
+        };
+      })
+    );
+
+    return [...firstRound, ...laterRounds];
+  }, []);
+
+  const allPredictionTableMatches = useMemo(() => {
+    return [...demoMatches, ...bracketPredictionTableMatches];
+  }, [bracketPredictionTableMatches]);
+
+  const predictionTableMatches = useMemo(() => {
+    const lastFinishedDate = Array.from(
+      new Set(demoMatches.map((match) => match.date).filter(Boolean))
+    )
+      .filter((date) => isFullMatchDateFinished(date, results))
+      .sort((a, b) => parseMatchDate(b).getTime() - parseMatchDate(a).getTime())[0];
+
+    if (lastFinishedDate) {
+      return demoMatches.filter((match) => match.date === lastFinishedDate);
+    }
+
+    return visibleMatches;
+  }, [results, visibleMatches]);
+
+  const resolvePredictionTableMatch = (match: any) => {
+    if (typeof match.id === "number" && match.id >= 49 && match.id <= 64) {
+      return {
+        ...match,
+        teamA: bracketSlots[`M${match.id}_home`] || match.teamA,
+        teamB: bracketSlots[`M${match.id}_away`] || match.teamB,
+      };
+    }
+
+    return getDisplayMatch(match);
+  };
 
   const getScoringMatchDate = (match: any) => match.date;
 
@@ -2106,6 +2165,178 @@ export default function DashboardPage() {
     visibleMatches.find((match) => match.id === Number(doublePrediction.matchId)) ||
     demoMatches.find((match) => match.id === Number(doublePrediction.matchId));
 
+
+  const renderPredictionsResultsTable = (matchesToShow: any[], height: string) => (
+    <div
+      style={{
+        maxHeight: height,
+        overflowY: "auto",
+        overflowX: "auto",
+        borderRadius: "16px",
+        border: "1px solid rgba(148, 163, 184, 0.16)",
+      }}
+    >
+      <table
+        style={{
+          width: "100%",
+          minWidth: "620px",
+          borderCollapse: "collapse",
+          fontSize: "13px",
+        }}
+      >
+        <thead>
+          <tr
+            style={{
+              background: "rgba(15, 23, 42, 0.92)",
+              color: "#cbd5e1",
+              textAlign: "left",
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+            }}
+          >
+            <th style={{ padding: "10px" }}>Mecz</th>
+            <th style={{ padding: "10px", textAlign: "center" }}>Wynik</th>
+            {players.map((player) => (
+              <th
+                key={`type-head-${player.name}`}
+                style={{ padding: "10px", textAlign: "center" }}
+              >
+                {player.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {matchesToShow.map((match) => {
+            const matchId = Number(match.id);
+            const realResult = results[matchId];
+            const displayMatch = resolvePredictionTableMatch(match);
+
+            return (
+              <tr key={`types-row-${match.id}`}>
+                <td
+                  style={{
+                    padding: "10px",
+                    borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                    whiteSpace: "nowrap",
+                    color: "#e5e7eb",
+                    fontWeight: 800,
+                  }}
+                >
+                  <span style={{ color: "#94a3b8", fontSize: "11px", marginRight: "8px" }}>
+                    {displayMatch.group || "Mecz"}
+                  </span>
+                  {displayMatch.teamA} - {displayMatch.teamB}
+                </td>
+
+                <td
+                  style={{
+                    padding: "10px",
+                    borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                    textAlign: "center",
+                    color: "#fde68a",
+                    fontWeight: 950,
+                  }}
+                >
+                  {realResult?.homeScore !== "" && realResult?.awayScore !== "" && realResult !== undefined
+                    ? `${realResult?.homeScore}:${realResult?.awayScore}`
+                    : "-"}
+                </td>
+
+                {players.map((player) => {
+                  const prediction = allPredictions.find(
+                    (item) =>
+                      item.match_id === matchId &&
+                      predictionMatchesPlayer(item, player.name)
+                  );
+
+                  const hasResult =
+                    realResult?.homeScore !== "" &&
+                    realResult?.awayScore !== "" &&
+                    realResult !== undefined;
+
+                  const realHome = Number(realResult?.homeScore);
+                  const realAway = Number(realResult?.awayScore);
+
+                  const hasDoubleForThisMatch =
+                    prediction &&
+                    prediction.power_name === "Rozdwojenie Jaźni" &&
+                    prediction.power_target_match_id === matchId &&
+                    prediction.power_home_score !== null &&
+                    prediction.power_home_score !== undefined &&
+                    prediction.power_away_score !== null &&
+                    prediction.power_away_score !== undefined;
+
+                  let displayHomeScore = prediction?.home_score;
+                  let displayAwayScore = prediction?.away_score;
+
+                  if (prediction && hasResult && hasDoubleForThisMatch) {
+                    const baseDistance = calculateDistance(
+                      prediction.home_score,
+                      prediction.away_score,
+                      realHome,
+                      realAway
+                    );
+
+                    const doubleDistance = calculateDistance(
+                      Number(prediction.power_home_score),
+                      Number(prediction.power_away_score),
+                      realHome,
+                      realAway
+                    );
+
+                    if (doubleDistance < baseDistance) {
+                      displayHomeScore = Number(prediction.power_home_score);
+                      displayAwayScore = Number(prediction.power_away_score);
+                    }
+                  }
+
+                  const exact =
+                    prediction &&
+                    hasResult &&
+                    Number(displayHomeScore) === realHome &&
+                    Number(displayAwayScore) === realAway;
+
+                  const exactWithDoublePower =
+                    Boolean(exact) && Boolean(hasDoubleForThisMatch);
+
+                  return (
+                    <td
+                      key={`types-cell-${match.id}-${player.name}`}
+                      style={{
+                        padding: "10px",
+                        borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                        textAlign: "center",
+                        color: prediction
+                          ? exact
+                            ? exactWithDoublePower
+                              ? "#c084fc"
+                              : "#4ade80"
+                            : "#e5e7eb"
+                          : "#64748b",
+                        background:
+                          prediction && exactWithDoublePower
+                            ? "rgba(168, 85, 247, 0.16)"
+                            : undefined,
+                        fontWeight: prediction ? 950 : 700,
+                      }}
+                    >
+                      {prediction
+                        ? `${displayHomeScore}:${displayAwayScore}`
+                        : "-"}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <main className="page">
 
@@ -2401,169 +2632,18 @@ export default function DashboardPage() {
                 <h3 style={{ margin: 0, fontSize: "18px" }}>
                   👁️ Typy graczy i wyniki
                 </h3>
-              </div>
 
-              <div
-                style={{
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                  overflowX: "auto",
-                  borderRadius: "16px",
-                  border: "1px solid rgba(148, 163, 184, 0.16)",
-                }}
-              >
-                <table
-                  style={{
-                    width: "100%",
-                    minWidth: "620px",
-                    borderCollapse: "collapse",
-                    fontSize: "13px",
-                  }}
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setIsPredictionsTableOpen(true)}
+                  style={{ padding: "9px 12px", fontSize: "13px" }}
                 >
-                  <thead>
-                    <tr
-                      style={{
-                        background: "rgba(15, 23, 42, 0.92)",
-                        color: "#cbd5e1",
-                        textAlign: "left",
-                      }}
-                    >
-                      <th style={{ padding: "10px" }}>Mecz</th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>Wynik</th>
-                      {players.map((player) => (
-                        <th
-                          key={`type-head-${player.name}`}
-                          style={{ padding: "10px", textAlign: "center" }}
-                        >
-                          {player.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {visibleMatches.map((match) => {
-                      const realResult = results[match.id];
-                      const displayMatch = getDisplayMatch(match);
-
-                      return (
-                        <tr key={`types-row-${match.id}`}>
-                          <td
-                            style={{
-                              padding: "10px",
-                              borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                              whiteSpace: "nowrap",
-                              color: "#e5e7eb",
-                              fontWeight: 800,
-                            }}
-                          >
-                            {displayMatch.teamA} - {displayMatch.teamB}
-                          </td>
-
-                          <td
-                            style={{
-                              padding: "10px",
-                              borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                              textAlign: "center",
-                              color: "#fde68a",
-                              fontWeight: 950,
-                            }}
-                          >
-                            {realResult?.homeScore !== "" && realResult?.awayScore !== ""
-                              ? `${realResult?.homeScore}:${realResult?.awayScore}`
-                              : "-"}
-                          </td>
-
-                          {players.map((player) => {
-                            const prediction = allPredictions.find(
-                              (item) =>
-                                item.match_id === match.id &&
-                                predictionMatchesPlayer(item, player.name)
-                            );
-
-                            const hasResult =
-                              realResult?.homeScore !== "" &&
-                              realResult?.awayScore !== "" &&
-                              realResult !== undefined;
-
-                            const realHome = Number(realResult?.homeScore);
-                            const realAway = Number(realResult?.awayScore);
-
-                            const hasDoubleForThisMatch =
-                              prediction &&
-                              prediction.power_name === "Rozdwojenie Jaźni" &&
-                              prediction.power_target_match_id === match.id &&
-                              prediction.power_home_score !== null &&
-                              prediction.power_home_score !== undefined &&
-                              prediction.power_away_score !== null &&
-                              prediction.power_away_score !== undefined;
-
-                            let displayHomeScore = prediction?.home_score;
-                            let displayAwayScore = prediction?.away_score;
-
-                            if (prediction && hasResult && hasDoubleForThisMatch) {
-                              const baseDistance = calculateDistance(
-                                prediction.home_score,
-                                prediction.away_score,
-                                realHome,
-                                realAway
-                              );
-
-                              const doubleDistance = calculateDistance(
-                                Number(prediction.power_home_score),
-                                Number(prediction.power_away_score),
-                                realHome,
-                                realAway
-                              );
-
-                              if (doubleDistance < baseDistance) {
-                                displayHomeScore = Number(prediction.power_home_score);
-                                displayAwayScore = Number(prediction.power_away_score);
-                              }
-                            }
-
-                            const exact =
-                              prediction &&
-                              hasResult &&
-                              Number(displayHomeScore) === realHome &&
-                              Number(displayAwayScore) === realAway;
-
-                            const exactWithDoublePower =
-                              Boolean(exact) && Boolean(hasDoubleForThisMatch);
-
-                            return (
-                              <td
-                                key={`types-cell-${match.id}-${player.name}`}
-                                style={{
-                                  padding: "10px",
-                                  borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                                  textAlign: "center",
-                                  color: prediction
-                                    ? exact
-                                      ? exactWithDoublePower
-                                        ? "#c084fc"
-                                        : "#4ade80"
-                                      : "#e5e7eb"
-                                    : "#64748b",
-                                  background:
-                                    prediction && exactWithDoublePower
-                                      ? "rgba(168, 85, 247, 0.16)"
-                                      : undefined,
-                                  fontWeight: prediction ? 950 : 700,
-                                }}
-                              >
-                                {prediction
-                                  ? `${displayHomeScore}:${displayAwayScore}`
-                                  : "-"}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  Otwórz pełną tabelę
+                </button>
               </div>
+
+              {renderPredictionsResultsTable(predictionTableMatches, "430px")}
 
               <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
                 Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni.
@@ -3850,6 +3930,66 @@ export default function DashboardPage() {
         </section>
           </div>
         </>
+      )}
+
+
+      {isPredictionsTableOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            padding: "clamp(12px, 3vw, 28px)",
+            background: "rgba(2, 6, 23, 0.82)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setIsPredictionsTableOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(1180px, 100%)",
+              maxHeight: "92vh",
+              overflow: "hidden",
+              borderRadius: "24px",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              background: "linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96))",
+              boxShadow: "0 30px 90px rgba(0,0,0,.55)",
+              padding: "clamp(14px, 3vw, 22px)",
+            }}
+          >
+            <div
+              className="panel-header"
+              style={{
+                marginBottom: "12px",
+                alignItems: "flex-start",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0 }}>👁️ Pełna tabela typów i wyników</h2>
+                <p className="muted" style={{ margin: "6px 0 0" }}>
+                  Tu są wszystkie mecze: faza grupowa oraz drabinka. Mecze bez wpisanego wyniku zostają puste, a po uzupełnieniu wyniku same pokażą rezultat.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setIsPredictionsTableOpen(false)}
+                style={{ minWidth: "44px", padding: "10px 14px", fontSize: "18px" }}
+              >
+                ×
+              </button>
+            </div>
+
+            {renderPredictionsResultsTable(allPredictionTableMatches, "72vh")}
+          </div>
+        </div>
       )}
 
       {activeTab === "bracket" && (
