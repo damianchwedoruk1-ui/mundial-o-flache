@@ -232,6 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
+// DOUBLE_PICK_TABLE_AND_EVENING_BUTTON_FIX_2026_06_06: jeden przycisk mocy wieczornej i pokazanie skutecznego typu rozdwojenia
 // BRACKET_TEAM_PICK_FIX_2026_06_06: wybor druzyn do slotow, znikanie juz wybranych druzyn
 // STATUS_RESET_AFTER_RESULTS_2026_06_06: po wpisaniu wszystkich wynikow status typow sie zeruje
 // STATUS_PHASE_FIX_2026_06_06: statusy resetuja sie per faza dnia, moce wieczorne bez ujawniania nazw
@@ -2304,12 +2305,54 @@ export default function DashboardPage() {
                                 predictionMatchesPlayer(item, player.name)
                             );
 
-                            const exact =
-                              prediction &&
+                            const hasResult =
                               realResult?.homeScore !== "" &&
                               realResult?.awayScore !== "" &&
-                              Number(realResult?.homeScore) === prediction.home_score &&
-                              Number(realResult?.awayScore) === prediction.away_score;
+                              realResult !== undefined;
+
+                            const realHome = Number(realResult?.homeScore);
+                            const realAway = Number(realResult?.awayScore);
+
+                            const hasDoubleForThisMatch =
+                              prediction &&
+                              prediction.power_name === "Rozdwojenie Jaźni" &&
+                              prediction.power_target_match_id === match.id &&
+                              prediction.power_home_score !== null &&
+                              prediction.power_home_score !== undefined &&
+                              prediction.power_away_score !== null &&
+                              prediction.power_away_score !== undefined;
+
+                            let displayHomeScore = prediction?.home_score;
+                            let displayAwayScore = prediction?.away_score;
+                            let usedDoubleDisplay = false;
+
+                            if (prediction && hasResult && hasDoubleForThisMatch) {
+                              const baseDistance = calculateDistance(
+                                prediction.home_score,
+                                prediction.away_score,
+                                realHome,
+                                realAway
+                              );
+
+                              const doubleDistance = calculateDistance(
+                                Number(prediction.power_home_score),
+                                Number(prediction.power_away_score),
+                                realHome,
+                                realAway
+                              );
+
+                              if (doubleDistance < baseDistance) {
+                                displayHomeScore = Number(prediction.power_home_score);
+                                displayAwayScore = Number(prediction.power_away_score);
+                                usedDoubleDisplay = true;
+                              }
+                            }
+
+                            const exact =
+                              prediction &&
+                              hasResult &&
+                              Number(displayHomeScore) === realHome &&
+                              Number(displayAwayScore) === realAway;
 
                             return (
                               <td
@@ -2320,14 +2363,20 @@ export default function DashboardPage() {
                                   textAlign: "center",
                                   color: prediction
                                     ? exact
-                                      ? "#4ade80"
+                                      ? usedDoubleDisplay
+                                        ? "#c084fc"
+                                        : "#4ade80"
                                       : "#e5e7eb"
                                     : "#64748b",
+                                  background:
+                                    prediction && exact && usedDoubleDisplay
+                                      ? "rgba(168, 85, 247, 0.16)"
+                                      : undefined,
                                   fontWeight: prediction ? 950 : 700,
                                 }}
                               >
                                 {prediction
-                                  ? `${prediction.home_score}:${prediction.away_score}`
+                                  ? `${displayHomeScore}:${displayAwayScore}`
                                   : "-"}
                               </td>
                             );
@@ -2340,7 +2389,7 @@ export default function DashboardPage() {
               </div>
 
               <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
-                Zielony typ = dokładnie trafiony wynik.
+                Zielony typ = dokładnie trafiony wynik. Fioletowy = dokładny wynik trafiony dzięki Rozdwojeniu Jaźni.
               </p>
             </div>
           )}
@@ -3346,23 +3395,72 @@ export default function DashboardPage() {
           </div>
 
           <div className="power-grid">
-            {filteredPowers.map((power, index) => (
-              <PowerCard
-                key={`${power.id}-${index}`}
-                {...power}
-                active={
-                  powerTab === "evening"
-                    ? selectedEveningPower === power.name
-                    : selectedPower === power.name
-                }
-                used={
-                  powerTab === "morning"
-                    ? savedPower === power.name || usedPowerNames.has(power.name)
-                    : savedEveningPower === power.name || usedPowerNames.has(power.name)
-                }
-                onClick={() => togglePower(power.name)}
-              />
-            ))}
+            {filteredPowers.map((power, index) => {
+              const isActive =
+                powerTab === "evening"
+                  ? selectedEveningPower === power.name
+                  : selectedPower === power.name;
+
+              const isUsed =
+                powerTab === "morning"
+                  ? savedPower === power.name || usedPowerNames.has(power.name)
+                  : savedEveningPower === power.name || usedPowerNames.has(power.name);
+
+              if (powerTab === "evening") {
+                return (
+                  <button
+                    key={`${power.id}-${index}`}
+                    type="button"
+                    onClick={() => togglePower(power.name)}
+                    disabled={isUsed}
+                    className="result-card"
+                    style={{
+                      textAlign: "left",
+                      cursor: isUsed ? "not-allowed" : "pointer",
+                      opacity: isUsed ? 0.55 : 1,
+                      borderRadius: "22px",
+                      padding: "18px",
+                      border: isActive
+                        ? "1px solid rgba(250, 204, 21, 0.8)"
+                        : "1px solid rgba(148, 163, 184, 0.22)",
+                      background: isActive
+                        ? "linear-gradient(135deg, rgba(124, 58, 237, 0.42), rgba(245, 158, 11, 0.28))"
+                        : "rgba(15, 23, 42, 0.72)",
+                      color: "white",
+                      boxShadow: isActive
+                        ? "0 0 28px rgba(250, 204, 21, 0.25)"
+                        : undefined,
+                    }}
+                  >
+                    <div style={{ fontSize: "30px", marginBottom: "8px" }}>
+                      {power.icon}
+                    </div>
+
+                    <strong style={{ display: "block", fontSize: "17px" }}>
+                      {power.name}
+                    </strong>
+
+                    <span className="muted" style={{ display: "block", marginTop: "6px" }}>
+                      {isUsed
+                        ? "Moc została już wykorzystana"
+                        : isActive
+                          ? "Wybrana — potwierdź przyciskiem poniżej"
+                          : "Kliknij, żeby wybrać"}
+                    </span>
+                  </button>
+                );
+              }
+
+              return (
+                <PowerCard
+                  key={`${power.id}-${index}`}
+                  {...power}
+                  active={isActive}
+                  used={isUsed}
+                  onClick={() => togglePower(power.name)}
+                />
+              );
+            })}
           </div>
 
 
