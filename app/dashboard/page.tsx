@@ -2500,7 +2500,6 @@ export default function DashboardPage() {
 
                             let displayHomeScore = prediction?.home_score;
                             let displayAwayScore = prediction?.away_score;
-                            let usedDoubleDisplay = false;
 
                             if (prediction && hasResult && hasDoubleForThisMatch) {
                               const baseDistance = calculateDistance(
@@ -2520,7 +2519,6 @@ export default function DashboardPage() {
                               if (doubleDistance < baseDistance) {
                                 displayHomeScore = Number(prediction.power_home_score);
                                 displayAwayScore = Number(prediction.power_away_score);
-                                usedDoubleDisplay = true;
                               }
                             }
 
@@ -2529,6 +2527,9 @@ export default function DashboardPage() {
                               hasResult &&
                               Number(displayHomeScore) === realHome &&
                               Number(displayAwayScore) === realAway;
+
+                            const exactWithDoublePower =
+                              Boolean(exact) && Boolean(hasDoubleForThisMatch);
 
                             return (
                               <td
@@ -2539,13 +2540,13 @@ export default function DashboardPage() {
                                   textAlign: "center",
                                   color: prediction
                                     ? exact
-                                      ? usedDoubleDisplay
+                                      ? exactWithDoublePower
                                         ? "#c084fc"
                                         : "#4ade80"
                                       : "#e5e7eb"
                                     : "#64748b",
                                   background:
-                                    prediction && exact && usedDoubleDisplay
+                                    prediction && exactWithDoublePower
                                       ? "rgba(168, 85, 247, 0.16)"
                                       : undefined,
                                   fontWeight: prediction ? 950 : 700,
@@ -2565,7 +2566,7 @@ export default function DashboardPage() {
               </div>
 
               <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
-                Zielony typ = dokładnie trafiony wynik. Fioletowy = dokładny wynik trafiony dzięki Rozdwojeniu Jaźni.
+                Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni.
               </p>
             </div>
           )}
