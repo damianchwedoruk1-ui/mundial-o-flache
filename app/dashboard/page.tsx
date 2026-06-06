@@ -595,6 +595,9 @@ export default function DashboardPage() {
     now >= eveningPowerWindow!.opensAt &&
     now <= eveningPowerWindow!.closesAt;
 
+  const isEveningPowerSettlementClosed =
+    !eveningPowerWindow || now >= eveningPowerWindow.closesAt;
+
   const isDoublePowerSelected = selectedPower === "Rozdwojenie Jaźni";
   const isDoublePowerSaved = savedPower === "Rozdwojenie Jaźni";
 
@@ -1261,15 +1264,17 @@ export default function DashboardPage() {
         }
       });
 
-      const eveningPowersForDay = allDailyPowers
-        .filter(
-          (power) =>
-            isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate) &&
-            isEveningPowerTime(power.power_time)
-        )
-        .sort((a, b) =>
-          String(a.created_at || "").localeCompare(String(b.created_at || ""))
-        );
+      const eveningPowersForDay = isEveningPowerSettlementClosed
+        ? allDailyPowers
+            .filter(
+              (power) =>
+                isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate) &&
+                isEveningPowerTime(power.power_time)
+            )
+            .sort((a, b) =>
+              String(a.created_at || "").localeCompare(String(b.created_at || ""))
+            )
+        : [];
 
       const shouldSettleDate =
         isFullMatchDateFinished(matchDate, results) || eveningPowersForDay.length > 0;
@@ -1296,19 +1301,21 @@ export default function DashboardPage() {
         }
       });
 
-      allDailyPowers.forEach((power) => {
-        if (!isPower(power.power_name, "Blokada")) return;
-        if (!isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate)) return;
+      if (isEveningPowerSettlementClosed) {
+        allDailyPowers.forEach((power) => {
+          if (!isPower(power.power_name, "Blokada")) return;
+          if (!isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate)) return;
 
-        const player = findPlayerRowByName(
-          table,
-          power.user_name || power.user_email
-        );
+          const player = findPlayerRowByName(
+            table,
+            power.user_name || power.user_email
+          );
 
-        if (player) {
-          blockedPlayers.add(player.name);
-        }
-      });
+          if (player) {
+            blockedPlayers.add(player.name);
+          }
+        });
+      }
 
       table.forEach((player) => {
         const vabankPrediction = allPredictions.find((prediction) => {
@@ -1397,7 +1404,7 @@ export default function DashboardPage() {
     });
 
     return table;
-  }, [results, allPredictions, allDailyPowers, bracketSlots]);
+  }, [results, allPredictions, allDailyPowers, bracketSlots, isEveningPowerSettlementClosed]);
 
   const powerLogs = useMemo<PowerLogType[]>(() => {
     const logs: PowerLogType[] = [];
@@ -1487,6 +1494,10 @@ export default function DashboardPage() {
         }
       });
 
+      if (!isEveningPowerSettlementClosed) {
+        return;
+      }
+
       allDailyPowers.forEach((power) => {
         if (!isSameMatchDate(power.match_date, matchDate)) return;
         if (power.power_time !== "evening") return;
@@ -1572,7 +1583,7 @@ export default function DashboardPage() {
     });
 
     return logs.reverse();
-  }, [allPredictions, allDailyPowers, results]);
+  }, [allPredictions, allDailyPowers, results, isEveningPowerSettlementClosed]);
 
   const sortedStandings = useMemo(() => {
     return [...standings].sort(
