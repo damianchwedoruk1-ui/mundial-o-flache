@@ -1,3 +1,7 @@
+"use client";
+
+import React, { useState } from "react";
+
 type Props = {
   icon: string;
   name: string;
@@ -50,15 +54,41 @@ const powerImages: Record<string, string> = {
   Złodziej: "/powers/zlodziej.svg",
 };
 
+const powerDescriptions: Record<string, string> = {
+  Vabank: "Punkty zdobyte tego dnia liczą się podwójnie. Jeżeli skończysz dzień z 0 punktów, dostajesz karę -4 punkty.",
+  Goleador: "Wybierasz jedną drużynę. Dostajesz +1 punkt za każdą bramkę tej drużyny w wybranym dniu/meczu.",
+  "Rozdwojenie Jaźni": "Możesz podać drugi typ do jednego wybranego meczu. Po zakończeniu meczu system liczy lepszy z Twoich dwóch typów.",
+  Slabiak: "Odwraca punktację dnia graczom, których nie chroni Blokada. Najlepszy wynik dnia spada na dół, a najsłabszy idzie do góry.",
+  Słabiak: "Odwraca punktację dnia graczom, których nie chroni Blokada. Najlepszy wynik dnia spada na dół, a najsłabszy idzie do góry.",
+  Zamianka: "Zamienia Twoje punkty z danego dnia z punktami wybranego gracza. Nie działa na gracza chronionego Blokadą.",
+  Blokada: "Chroni Cię przed mocami wieczornymi innych graczy, takimi jak Słabiak, Zamianka i Złodziej.",
+  Złodziej: "Zabiera punkty dnia wybranemu graczowi i dodaje je Tobie. Nie działa na gracza chronionego Blokadą.",
+};
+
 export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hideAction }: Props) {
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const style = rarityStyles[rarity] || rarityStyles.common;
   const imageSrc = powerImages[name];
+  const cardDescription = desc || powerDescriptions[name] || "Kliknij kartę, aby wybrać tę moc.";
+
+  const handleCardClick = () => {
+    if (used) return;
+    onClick?.();
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleCardClick();
+  };
 
   return (
-    <button
-      type="button"
-      onClick={used ? undefined : onClick}
-      disabled={used}
+    <div
+      role="button"
+      tabIndex={used ? -1 : 0}
+      aria-disabled={used}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
       className={`premium-power-card ${active ? "active" : ""} ${used ? "used" : ""}`}
       style={
         {
@@ -202,6 +232,74 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
           .premium-power-card.active .power-burst {
             animation: powerBurst .7s ease-out;
           }
+          .power-help-button {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            z-index: 20;
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            border: 1px solid var(--power-color);
+            background: rgba(2, 6, 23, .74);
+            color: white;
+            font-size: 18px;
+            font-weight: 950;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 0 16px color-mix(in srgb, var(--power-color) 55%, transparent);
+          }
+
+          .power-help-button:hover {
+            transform: scale(1.08);
+            background: var(--power-soft);
+          }
+
+          .power-help-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: rgba(2, 6, 23, .72);
+            backdrop-filter: blur(8px);
+          }
+
+          .power-help-modal {
+            width: min(420px, 100%);
+            position: relative;
+            border-radius: 24px;
+            padding: 22px;
+            border: 1px solid var(--power-color);
+            background:
+              radial-gradient(circle at top right, var(--power-soft), transparent 42%),
+              linear-gradient(145deg, rgba(15,23,42,.98), rgba(2,6,23,.98));
+            box-shadow:
+              0 0 34px color-mix(in srgb, var(--power-color) 46%, transparent),
+              0 24px 90px rgba(0,0,0,.55);
+          }
+
+          .power-help-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.2);
+            background: rgba(255,255,255,.08);
+            color: white;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 1;
+          }
+
+          .power-help-close:hover {
+            background: rgba(248,113,113,.24);
+            border-color: rgba(248,113,113,.7);
+          }
+
 
           @keyframes powerSpin {
             from { transform: rotate(0deg); }
@@ -247,6 +345,111 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
           }
         `}
       </style>
+
+      <button
+        type="button"
+        className="power-help-button"
+        aria-label={`Opis mocy ${name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          setIsHelpOpen(true);
+        }}
+      >
+        ?
+      </button>
+
+      {isHelpOpen && (
+        <div
+          className="power-help-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Opis mocy ${name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsHelpOpen(false);
+          }}
+        >
+          <div
+            className="power-help-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="power-help-close"
+              aria-label="Zamknij opis"
+              onClick={() => setIsHelpOpen(false)}
+            >
+              ×
+            </button>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "14px",
+                paddingRight: "36px",
+              }}
+            >
+              <div
+                style={{
+                  width: "54px",
+                  height: "54px",
+                  borderRadius: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(2, 6, 23, 0.62)",
+                  border: `1px solid ${style.color}88`,
+                  boxShadow: `inset 0 0 18px ${style.color}22, 0 0 18px ${style.color}44`,
+                  flexShrink: 0,
+                }}
+              >
+                {imageSrc ? (
+                  <img src={imageSrc} alt={name} width={42} height={42} />
+                ) : (
+                  <span style={{ fontSize: "30px" }}>{icon}</span>
+                )}
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: style.color,
+                    fontSize: "12px",
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {style.label}
+                </div>
+                <h3
+                  style={{
+                    margin: 0,
+                    color: "white",
+                    fontSize: "22px",
+                    lineHeight: 1.15,
+                  }}
+                >
+                  {name}
+                </h3>
+              </div>
+            </div>
+
+            <p
+              style={{
+                margin: 0,
+                color: "#dbeafe",
+                fontSize: "15px",
+                lineHeight: 1.55,
+              }}
+            >
+              {cardDescription}
+            </p>
+          </div>
+        </div>
+      )}
 
       <span
         className="power-burst"
@@ -346,7 +549,7 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
               lineHeight: 1.35,
             }}
           >
-            {desc || (hideAction ? "Kliknij kartę, a potem potwierdź wybór poniżej." : "Kliknij, aby wybrać tę moc.")}
+            {hideAction ? "Kliknij kartę, a potem potwierdź wybór poniżej." : "Kliknij, aby wybrać tę moc."}
           </div>
 
           <div
@@ -421,6 +624,6 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
