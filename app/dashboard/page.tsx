@@ -412,7 +412,7 @@ function getEveningPowerWindow(currentMatchDate: string) {
 
   const closesAt = new Date(currentDay);
   closesAt.setDate(closesAt.getDate() - 1);
-  closesAt.setHours(13, 18, 0, 0);
+  closesAt.setHours(20, 0, 0, 0);
 
   return { opensAt, closesAt };
 }
@@ -1475,44 +1475,6 @@ export default function DashboardPage() {
     });
   }, [allPredictions]);
 
-  const eveningPowerDebugRows = useMemo(() => {
-    const finishedMatchDates = Array.from(
-      new Set(demoMatches.map((match) => match.date).filter(Boolean))
-    ) as string[];
-
-    return allDailyPowers.map((power, index) => {
-      const matchingFinishedDate = finishedMatchDates.find((matchDate) =>
-        isSameMatchDate(power.match_date, matchDate)
-      );
-
-      return {
-        id: `${power.user_email || power.user_name}-${power.created_at || index}`,
-        user: getPlayerNameFromEmail(power.user_email || power.user_name || ""),
-        rawUser: power.user_name || "",
-        matchDate: power.match_date || "BRAK",
-        normalizedDate: normalizeMatchDateKey(power.match_date || ""),
-        powerName: power.power_name || "BRAK",
-        powerTime: power.power_time || "BRAK",
-        target: power.target_player || "BRAK",
-        createdAt: power.created_at || "BRAK",
-        matchedFinishedDate: matchingFinishedDate || "NIE",
-      };
-    });
-  }, [allDailyPowers]);
-
-
-  const standingsDebugRows = useMemo(() => {
-    return standings.map((row) => ({
-      name: row.name,
-      points: row.points,
-      exactHits: row.exact_hits,
-      dailyPoints: Object.entries(row.daily_points).map(([date, points]) => ({
-        date,
-        points,
-      })),
-    }));
-  }, [standings]);
-
   const bestRound = sortedStandings[0];
 
   const handlePredictionChange = (
@@ -1928,7 +1890,7 @@ export default function DashboardPage() {
 
   const saveEveningPower = async () => {
     if (!isEveningPowerWindow || !eveningSettlementDate) {
-      alert("Moce wieczorne można zaakceptować tylko w oknie 12:00–13:18.");
+      alert("Moce wieczorne można zaakceptować tylko w oknie 12:00–20:00.");
       return;
     }
 
@@ -2405,91 +2367,6 @@ export default function DashboardPage() {
 
           <div style={{ transform: "scale(0.92)", transformOrigin: "top left", width: "108%" }}>
             <Standings rows={standings} />
-          </div>
-
-          <div
-            style={{
-              marginTop: "14px",
-              padding: "12px",
-              borderRadius: "14px",
-              border: "1px solid rgba(250, 204, 21, 0.35)",
-              background: "rgba(15, 23, 42, 0.72)",
-              fontSize: "12px",
-              lineHeight: 1.5,
-            }}
-          >
-            <strong style={{ color: "#facc15" }}>DEBUG — widziane moce wieczorne:</strong>
-
-            {eveningPowerDebugRows.length === 0 ? (
-              <div style={{ marginTop: "8px", color: "#fca5a5" }}>
-                Frontend nie widzi żadnych wpisów z daily_powers.
-              </div>
-            ) : (
-              <div style={{ marginTop: "8px", display: "grid", gap: "6px" }}>
-                {eveningPowerDebugRows.map((row) => (
-                  <div
-                    key={row.id}
-                    style={{
-                      padding: "8px",
-                      borderRadius: "10px",
-                      background: "rgba(255,255,255,0.06)",
-                      color: "#dbeafe",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    <div>
-                      <b>{row.user}</b> — {row.powerName} — cel: {row.target}
-                    </div>
-                    <div style={{ color: "#93c5fd" }}>
-                      data: {row.matchDate} | norm: {row.normalizedDate} | pasuje do dnia: {row.matchedFinishedDate}
-                    </div>
-                    <div style={{ color: "#c4b5fd" }}>
-                      power_time: {row.powerTime} | created_at: {row.createdAt}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginTop: "14px",
-              padding: "12px",
-              borderRadius: "14px",
-              border: "1px solid rgba(34, 197, 94, 0.35)",
-              background: "rgba(15, 23, 42, 0.72)",
-              fontSize: "12px",
-              lineHeight: 1.5,
-            }}
-          >
-            <strong style={{ color: "#86efac" }}>DEBUG — tabela po rozliczeniu:</strong>
-
-            <div style={{ marginTop: "8px", display: "grid", gap: "6px" }}>
-              {standingsDebugRows.map((row) => (
-                <div
-                  key={row.name}
-                  style={{
-                    padding: "8px",
-                    borderRadius: "10px",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "#dcfce7",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  <div>
-                    <b>{row.name}</b> — suma: {row.points} pkt | celne: {row.exactHits}
-                  </div>
-                  <div style={{ color: "#bbf7d0" }}>
-                    punkty dni: {row.dailyPoints.length === 0
-                      ? "BRAK"
-                      : row.dailyPoints
-                          .map((item) => `${item.date}: ${item.points}`)
-                          .join(" | ")}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {arePredictionsRevealed && (
