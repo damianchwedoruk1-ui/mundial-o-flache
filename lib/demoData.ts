@@ -1,4 +1,3 @@
-// TEST_DAY_3_MATCHES_9_12
 export const players = [
   {
     id: 1,
@@ -148,44 +147,7 @@ export const demoMatches = [
     teamA: "Australia",
     teamB: "Turcja",
     time: "23:30",
-  },
-
-  {
-    id: 9,
-    group: "Grupa E",
-    date: "08.06.2026",
-    teamA: "Niemcy",
-    teamB: "Curacao",
-    time: "18:00",
-  },
-
-  {
-    id: 10,
-    group: "Grupa E",
-    date: "08.06.2026",
-    teamA: "Wybrzeże Kości Słoniowej",
-    teamB: "Ekwador",
-    time: "20:00",
-  },
-
-  {
-    id: 11,
-    group: "Grupa F",
-    date: "08.06.2026",
-    teamA: "Holandia",
-    teamB: "Japonia",
-    time: "22:00",
-  },
-
-  {
-    id: 12,
-    group: "Grupa F",
-    date: "08.06.2026",
-    teamA: "Tunezja",
-    teamB: "Szwecja",
-    time: "23:30",
-  },
-
+  }
 ];
 
 export const demoResults = [

@@ -1,7 +1,5 @@
 "use client";
 
-// TEST_FORCE_DAY_08_UNLOCKED_2026_06_06
-
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -435,7 +433,7 @@ function getBettingWindow(matchDate: string) {
   const matchDay = parseMatchDate(matchDate);
   const opensAt = new Date(matchDay);
   opensAt.setDate(opensAt.getDate() - 1);
-  opensAt.setHours(0, 0, 0, 0);
+  opensAt.setHours(20, 0, 0, 0);
 
   const closesAt = new Date(matchDay);
   closesAt.setDate(closesAt.getDate() - 1);
@@ -552,7 +550,7 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
-  const currentMatchDate = "08.06.2026"; // TEST MODE: wymuszony trzeci dzień meczowy
+  const currentMatchDate = useMemo(() => getCurrentMatchDate(demoMatches), []);
 
   const visibleMatches = useMemo(() => {
     return demoMatches.filter((match) => match.date === currentMatchDate);
@@ -958,7 +956,7 @@ export default function DashboardPage() {
 
   const arePredictionsRevealed = isAfterDeadline || allPlayersSubmitted;
 
-  const isPredictionLocked = false; // TEST MODE: odblokowane typowanie
+  const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
 
   const bracketPredictionTableMatches = useMemo(() => {
     const firstRound = knockoutFirstRoundMatches.map((match) => ({
