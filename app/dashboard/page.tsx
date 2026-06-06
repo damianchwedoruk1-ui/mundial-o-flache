@@ -611,7 +611,7 @@ export default function DashboardPage() {
         user_email: p.user_email || "",
         match_date: String(p.match_date || "").trim(),
         power_name: String(p.power_name || "").trim(),
-        power_time: String(p.power_time || "evening").trim(),
+        power_time: normalizePowerTime(p.power_time),
         target_player: getDailyPowerTargetPlayer(p),
         created_at: p.created_at || null,
       }));
