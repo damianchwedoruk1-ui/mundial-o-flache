@@ -1954,19 +1954,39 @@ export default function DashboardPage() {
     );
 
     if (!confirmed) return;
+
+    const deleteAllRows = async (
+      tableName: string,
+      columnName: string,
+      impossibleValue: string | number
+    ) => {
+      const { error: deleteFilledRowsError } = await supabase
+        .from(tableName)
+        .delete()
+        .neq(columnName, impossibleValue);
+
+      if (deleteFilledRowsError) {
+        return deleteFilledRowsError;
+      }
+
+      const { error: deleteEmptyRowsError } = await supabase
+        .from(tableName)
+        .delete()
+        .is(columnName, null);
+
+      return deleteEmptyRowsError;
+    };
+
     const tablesToClear = [
       { name: "predictions", column: "match_id", value: -1 },
       { name: "results", column: "match_id", value: -1 },
-      { name: "final_predictions", column: "user_email", value: "__never__" },
       { name: "daily_powers", column: "user_email", value: "__never__" },
+      { name: "final_predictions", column: "user_email", value: "__never__" },
       { name: "knockout_bracket", column: "slot_id", value: "__never__" },
     ];
 
     for (const table of tablesToClear) {
-      const { error } = await supabase
-        .from(table.name)
-        .delete()
-        .neq(table.column, table.value);
+      const error = await deleteAllRows(table.name, table.column, table.value);
 
       if (error) {
         console.error(error);
@@ -2006,7 +2026,7 @@ export default function DashboardPage() {
     await loadAllDailyPowers();
     await loadKnockoutBracket();
 
-    alert("Liga testowa została wyzerowana. Odświeżam stronę, żeby wyczyścić stan testowych graczy.");
+    alert("Liga testowa została wyzerowana razem z mocami i typami podium. Odświeżam stronę.");
     window.location.reload();
   };
 
