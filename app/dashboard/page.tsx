@@ -955,7 +955,7 @@ export default function DashboardPage() {
 
   const arePredictionsRevealed = isAfterDeadline || allPlayersSubmitted;
 
-  const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
+  const isPredictionLocked = false; // TEST MODE
 
   const bracketPredictionTableMatches = useMemo(() => {
     const firstRound = knockoutFirstRoundMatches.map((match) => ({
