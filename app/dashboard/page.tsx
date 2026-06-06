@@ -3492,32 +3492,6 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <>
-                  {powerTab === "evening" && (
-                <div
-                  style={{
-                    marginTop: "16px",
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    className="btn"
-                    onClick={saveEveningPower}
-                    disabled={!selectedEveningPower || Boolean(savedEveningPower)}
-                    style={{
-                      background: savedEveningPower
-                        ? "rgba(71, 85, 105, 0.85)"
-                        : "linear-gradient(135deg, #0f766e, #22c55e)",
-                      opacity: !selectedEveningPower || savedEveningPower ? 0.55 : 1,
-                    }}
-                  >
-                    {savedEveningPower
-                      ? `✅ Użyto: ${savedEveningPower}`
-                      : "🌙 Użyj wybranej mocy wieczornej"}
-                  </button>
-                </div>
-              )}
-
               {(selectedEveningPower === "Zamianka" || selectedEveningPower === "Złodziej") && (
                     <div style={{ marginTop: "14px" }}>
                       <strong>
