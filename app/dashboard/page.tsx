@@ -252,6 +252,28 @@ function parseMatchDate(matchDate: string) {
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
+
+function normalizeMatchDateKey(value: string) {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const parts = value.split(".");
+
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  return value;
+}
+
+function isSameMatchDate(a: string, b: string) {
+  return normalizeMatchDateKey(a) === normalizeMatchDateKey(b);
+}
+
 function formatShortDate(date: Date) {
   return date.toLocaleDateString("pl-PL", {
     day: "2-digit",
@@ -634,7 +656,7 @@ export default function DashboardPage() {
       if (dailyPowerData) {
         const eveningForPreviousDay = dailyPowerData.find(
           (power: any) =>
-            power.match_date === previousMatchDate &&
+            isSameMatchDate(power.match_date, previousMatchDate) &&
             power.power_time === "evening"
         );
 
@@ -696,7 +718,7 @@ export default function DashboardPage() {
 
       const usedEveningPower = allDailyPowers.some(
         (power) =>
-          power.match_date === previousMatchDate &&
+          isSameMatchDate(power.match_date, previousMatchDate) &&
           power.power_time === "evening" &&
           predictionBelongsToPlayer(power.user_name, player.name)
       );
@@ -1001,7 +1023,7 @@ export default function DashboardPage() {
 
       allDailyPowers.forEach((power) => {
         if (power.power_name !== "Blokada") return;
-        if (power.match_date !== matchDate) return;
+        if (!isSameMatchDate(power.match_date, matchDate)) return;
 
         const player = table.find((row) =>
           predictionBelongsToPlayer(power.user_name, row.name)
@@ -1037,7 +1059,7 @@ export default function DashboardPage() {
       });
 
       const eveningPowersForDay = allDailyPowers.filter(
-        (power) => power.match_date === matchDate && power.power_time === "evening"
+        (power) => isSameMatchDate(power.match_date, matchDate) && power.power_time === "evening"
       );
 
       eveningPowersForDay.forEach((power) => {
@@ -1197,7 +1219,7 @@ export default function DashboardPage() {
       });
 
       allDailyPowers.forEach((power) => {
-        if (power.match_date !== matchDate) return;
+        if (!isSameMatchDate(power.match_date, matchDate)) return;
         if (power.power_time !== "evening") return;
         if (power.power_name !== "Blokada") return;
 
@@ -1216,7 +1238,7 @@ export default function DashboardPage() {
       });
 
       const eveningPowersForDay = allDailyPowers.filter(
-        (power) => power.match_date === matchDate && power.power_time === "evening"
+        (power) => isSameMatchDate(power.match_date, matchDate) && power.power_time === "evening"
       );
 
       eveningPowersForDay.forEach((power) => {
@@ -1397,7 +1419,7 @@ export default function DashboardPage() {
     Boolean(savedEveningPower) ||
     allDailyPowers.some(
       (power) =>
-        power.match_date === previousMatchDate &&
+        isSameMatchDate(power.match_date, previousMatchDate) &&
         power.power_time === "evening" &&
         predictionBelongsToPlayer(power.user_name, userName)
     );
@@ -1734,7 +1756,7 @@ export default function DashboardPage() {
 
   const saveEveningPower = async () => {
     if (!isEveningPowerWindow || !previousMatchDate) {
-      alert("Moce wieczorne można zaakceptować tylko w oknie 12:00–20:00.");
+      alert("Moce wieczorne można zaakceptować tylko w oknie 12:00–13:18.");
       return;
     }
 
