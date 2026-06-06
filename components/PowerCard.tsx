@@ -6,6 +6,7 @@ type Props = {
   active?: boolean;
   used?: boolean;
   onClick?: () => void;
+  hideAction?: boolean;
 };
 
 const rarityStyles: Record<
@@ -49,24 +50,15 @@ const powerImages: Record<string, string> = {
   Złodziej: "/powers/zlodziej.svg",
 };
 
-export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: Props) {
+export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hideAction }: Props) {
   const style = rarityStyles[rarity] || rarityStyles.common;
   const imageSrc = powerImages[name];
 
   return (
-    <div
-      role="button"
-      tabIndex={used ? -1 : 0}
-      aria-disabled={used}
+    <button
+      type="button"
       onClick={used ? undefined : onClick}
-      onKeyDown={(event) => {
-        if (used) return;
-
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onClick?.();
-        }
-      }}
+      disabled={used}
       className={`premium-power-card ${active ? "active" : ""} ${used ? "used" : ""}`}
       style={
         {
@@ -79,7 +71,6 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
         {`
           .premium-power-card {
             position: relative;
-            display: block;
             cursor: pointer;
             min-height: 250px;
             padding: 0;
@@ -355,7 +346,7 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
               lineHeight: 1.35,
             }}
           >
-            {desc || "Kliknij, aby wybrać tę moc."}
+            {desc || (hideAction ? "Kliknij kartę, a potem potwierdź wybór poniżej." : "Kliknij, aby wybrać tę moc.")}
           </div>
 
           <div
@@ -430,6 +421,6 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
           </span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

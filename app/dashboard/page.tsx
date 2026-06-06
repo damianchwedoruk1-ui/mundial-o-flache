@@ -232,9 +232,7 @@ type DailyPowerType = {
   created_at?: string | null;
 };
 
-// EVENING_SINGLE_BUTTON_REAL_FIX_2026_06_06: karty wieczorne bez wewnetrznego przycisku, zostaje tylko akceptacja
-// EVENING_POWER_CARD_VISUAL_FIX_2026_06_06: przywrocony wyglad kart, ukryty przycisk w karcie wieczornej
-// DOUBLE_PICK_TABLE_AND_EVENING_BUTTON_FIX_2026_06_06: jeden przycisk mocy wieczornej i pokazanie skutecznego typu rozdwojenia
+// EVENING_CARD_CLEAN_FIX_2026_06_06: oryginalne karty, bez dodatkowego przycisku w karcie
 // BRACKET_TEAM_PICK_FIX_2026_06_06: wybor druzyn do slotow, znikanie juz wybranych druzyn
 // STATUS_RESET_AFTER_RESULTS_2026_06_06: po wpisaniu wszystkich wynikow status typow sie zeruje
 // STATUS_PHASE_FIX_2026_06_06: statusy resetuja sie per faza dnia, moce wieczorne bez ujawniania nazw
@@ -2045,11 +2043,6 @@ export default function DashboardPage() {
             max-width: 100%;
           }
 
-          .evening-power-mode .premium-power-card button,
-          .evening-power-mode .power-inner button {
-            display: none !important;
-          }
-
           .bracket-scroll {
             width: 100% !important;
             max-width: 100% !important;
@@ -3355,7 +3348,7 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className={`panel ${powerTab === "evening" ? "evening-power-mode" : ""}`} style={{ gridColumn: "1 / -1" }}>
+        <section className="panel" style={{ gridColumn: "1 / -1" }}>
           <div className="panel-header">
             <div>
               <h2>🃏 Moce</h2>
@@ -3402,68 +3395,24 @@ export default function DashboardPage() {
           </div>
 
           <div className="power-grid">
-            {filteredPowers.map((power, index) => {
-              const isActive =
-                powerTab === "evening"
-                  ? selectedEveningPower === power.name
-                  : selectedPower === power.name;
-
-              const isUsed =
-                powerTab === "morning"
-                  ? savedPower === power.name || usedPowerNames.has(power.name)
-                  : savedEveningPower === power.name || usedPowerNames.has(power.name);
-
-              if (powerTab === "evening") {
-                return (
-                  <div
-                    key={`${power.id}-${index}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      if (!isUsed) togglePower(power.name);
-                    }}
-                    onKeyDown={(event) => {
-                      if (!isUsed && (event.key === "Enter" || event.key === " ")) {
-                        togglePower(power.name);
-                      }
-                    }}
-                    className={`premium-power-card ${isActive ? "active" : ""} ${isUsed ? "used" : ""}`}
-                    style={{
-                      cursor: isUsed ? "not-allowed" : "pointer",
-                      opacity: isUsed ? 0.55 : 1,
-                    }}
-                  >
-                    <div className="power-inner">
-                      <div style={{ fontSize: "34px", marginBottom: "10px" }}>
-                        {power.icon}
-                      </div>
-
-                      <strong style={{ display: "block", fontSize: "18px" }}>
-                        {power.name}
-                      </strong>
-
-                      <p className="muted" style={{ marginTop: "8px", marginBottom: 0 }}>
-                        {isUsed
-                          ? "Moc została już wykorzystana"
-                          : isActive
-                            ? "Wybrana — kliknij Akceptuj moc wieczorną"
-                            : "Kliknij kartę, żeby wybrać"}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <PowerCard
-                  key={`${power.id}-${index}`}
-                  {...power}
-                  active={isActive}
-                  used={isUsed}
-                  onClick={() => togglePower(power.name)}
-                />
-              );
-            })}
+            {filteredPowers.map((power, index) => (
+              <PowerCard
+                key={`${power.id}-${index}`}
+                {...power}
+                active={
+                  powerTab === "evening"
+                    ? selectedEveningPower === power.name
+                    : selectedPower === power.name
+                }
+                used={
+                  powerTab === "morning"
+                    ? savedPower === power.name || usedPowerNames.has(power.name)
+                    : savedEveningPower === power.name || usedPowerNames.has(power.name)
+                }
+                onClick={() => togglePower(power.name)}
+                hideAction={powerTab === "evening"}
+              />
+            ))}
           </div>
 
 
