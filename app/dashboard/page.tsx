@@ -1765,6 +1765,11 @@ export default function DashboardPage() {
       return;
     }
 
+    if (!isBettingOpen) {
+      alert("Moce poranne można wybrać tylko w oknie typowania 20:00–23:59 dzień przed meczami.");
+      return;
+    }
+
     if (isPredictionLocked) return;
 
     if (savedPower || !isEditingPredictions) {
@@ -1801,6 +1806,11 @@ export default function DashboardPage() {
   };
 
   const savePredictions = async () => {
+    if (!isBettingOpen) {
+      alert("Typy i moce poranne można zapisać tylko w oknie typowania 20:00–23:59 dzień przed meczami.");
+      return;
+    }
+
     if (isPredictionLocked) {
       alert("Typowanie jest już zablokowane.");
       return;
