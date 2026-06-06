@@ -280,6 +280,10 @@ function isSameMatchDate(a: string, b: string) {
   return normalizeMatchDateKey(a) === normalizeMatchDateKey(b);
 }
 
+function getMatchDateTime(value: string) {
+  return parseMatchDate(value).getTime();
+}
+
 function normalizePowerText(value?: string | null) {
   return normalizeName(String(value || "")).trim();
 }
@@ -483,6 +487,16 @@ export default function DashboardPage() {
   const previousMatchDate = useMemo(() => {
     return getPreviousMatchDate(demoMatches, currentMatchDate);
   }, [currentMatchDate]);
+
+  const eveningSettlementDate = useMemo(() => {
+    const finishedDates = Array.from(
+      new Set(demoMatches.map((match) => match.date).filter(Boolean))
+    )
+      .filter((date) => isFullMatchDateFinished(date, results))
+      .sort((a, b) => getMatchDateTime(a) - getMatchDateTime(b));
+
+    return finishedDates[finishedDates.length - 1] || previousMatchDate;
+  }, [results, previousMatchDate]);
 
   const eveningPowerWindow = useMemo(() => {
     return getEveningPowerWindow(currentMatchDate);
@@ -1076,6 +1090,35 @@ export default function DashboardPage() {
       new Set(demoMatches.map((match) => match.date).filter(Boolean))
     ) as string[];
 
+    const getDailyPointsTotal = (date: string) =>
+      table.reduce((sum, player) => sum + Math.abs(player.daily_points[date] || 0), 0);
+
+    const getEveningPowerApplyDate = (powerDate: string) => {
+      const directDate =
+        allMatchDates.find((date) => isSameMatchDate(date, powerDate)) || powerDate;
+
+      if (getDailyPointsTotal(directDate) > 0) {
+        return directDate;
+      }
+
+      const datesWithPoints = allMatchDates
+        .filter((date) => isFullMatchDateFinished(date, results))
+        .filter((date) => getDailyPointsTotal(date) > 0)
+        .sort((a, b) => getMatchDateTime(a) - getMatchDateTime(b));
+
+      if (datesWithPoints.length === 0) {
+        return directDate;
+      }
+
+      const directTime = getMatchDateTime(directDate);
+
+      const nearestAfter = datesWithPoints.find(
+        (date) => getMatchDateTime(date) >= directTime
+      );
+
+      return nearestAfter || datesWithPoints[datesWithPoints.length - 1];
+    };
+
     allMatchDates.forEach((matchDate) => {
       table.forEach((player) => {
         if (player.daily_points[matchDate] === undefined) {
@@ -1086,7 +1129,7 @@ export default function DashboardPage() {
       const eveningPowersForDay = allDailyPowers
         .filter(
           (power) =>
-            isSameMatchDate(power.match_date, matchDate) &&
+            isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate) &&
             isEveningPowerTime(power.power_time)
         )
         .sort((a, b) =>
@@ -1120,7 +1163,7 @@ export default function DashboardPage() {
 
       allDailyPowers.forEach((power) => {
         if (!isPower(power.power_name, "Blokada")) return;
-        if (!isSameMatchDate(power.match_date, matchDate)) return;
+        if (!isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate)) return;
 
         const player = findPlayerRowByName(
           table,
@@ -1548,7 +1591,7 @@ export default function DashboardPage() {
     Boolean(savedEveningPower) ||
     allDailyPowers.some(
       (power) =>
-        isSameMatchDate(power.match_date, previousMatchDate) &&
+        isSameMatchDate(power.match_date, eveningSettlementDate) &&
         isEveningPowerTime(power.power_time) &&
         predictionBelongsToPlayer(power.user_name, userName)
     );
@@ -1884,7 +1927,7 @@ export default function DashboardPage() {
   };
 
   const saveEveningPower = async () => {
-    if (!isEveningPowerWindow || !previousMatchDate) {
+    if (!isEveningPowerWindow || !eveningSettlementDate) {
       alert("Moce wieczorne można zaakceptować tylko w oknie 12:00–13:18.");
       return;
     }
@@ -1918,7 +1961,7 @@ export default function DashboardPage() {
     const { error } = await supabase.from("daily_powers").insert({
       user_id: activeUser.id,
       user_email: activeUser.email,
-      match_date: previousMatchDate,
+      match_date: eveningSettlementDate,
       power_name: selectedEveningPower,
       power_time: "evening",
       target_player:
