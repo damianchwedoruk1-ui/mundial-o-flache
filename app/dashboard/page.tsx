@@ -288,6 +288,10 @@ function isEveningPowerTime(value?: string | null) {
   return normalizePowerText(value) === "evening";
 }
 
+function normalizePowerTime(value?: string | null): "morning" | "evening" {
+  return normalizePowerText(value) === "morning" ? "morning" : "evening";
+}
+
 function isPower(value: string | null | undefined, expected: string) {
   return normalizePowerText(value) === normalizePowerText(expected);
 }
