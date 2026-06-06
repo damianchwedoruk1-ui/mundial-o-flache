@@ -320,7 +320,7 @@ function getEveningPowerWindow(currentMatchDate: string) {
 
   const closesAt = new Date(currentDay);
   closesAt.setDate(closesAt.getDate() - 1);
-  closesAt.setHours(20, 0, 0, 0);
+  closesAt.setHours(13, 18, 0, 0);
 
   return { opensAt, closesAt };
 }
