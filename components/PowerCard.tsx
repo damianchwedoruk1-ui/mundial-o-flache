@@ -54,10 +54,19 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
   const imageSrc = powerImages[name];
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={used ? -1 : 0}
+      aria-disabled={used}
       onClick={used ? undefined : onClick}
-      disabled={used}
+      onKeyDown={(event) => {
+        if (used) return;
+
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
       className={`premium-power-card ${active ? "active" : ""} ${used ? "used" : ""}`}
       style={
         {
@@ -70,6 +79,7 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
         {`
           .premium-power-card {
             position: relative;
+            display: block;
             cursor: pointer;
             min-height: 250px;
             padding: 0;
@@ -420,6 +430,6 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick }: P
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
