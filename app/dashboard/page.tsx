@@ -294,6 +294,31 @@ function findPlayerRowByName<T extends { name: string }>(rows: T[], value?: stri
   return rows.find((row) => samePlayerName(value, row.name));
 }
 
+function getDailyPowerTargetPlayer(row: any) {
+  const directValue =
+    row?.target_player ||
+    row?.target_player_name ||
+    row?.target ||
+    row?.target_name ||
+    row?.target_user ||
+    row?.target_user_name ||
+    row?.targetPlayer ||
+    row?.targetPlayerName;
+
+  if (directValue) return String(directValue);
+
+  const targetKey = Object.keys(row || {}).find((key) => {
+    if (!key.toLowerCase().includes("target")) return false;
+
+    const value = row[key];
+    if (!value) return false;
+
+    return players.some((player) => samePlayerName(String(value), player.name));
+  });
+
+  return targetKey ? String(row[targetKey]) : null;
+}
+
 function formatShortDate(date: Date) {
   return date.toLocaleDateString("pl-PL", {
     day: "2-digit",
@@ -570,12 +595,7 @@ export default function DashboardPage() {
         match_date: p.match_date || "",
         power_name: p.power_name || "",
         power_time: p.power_time || "evening",
-        target_player:
-          p.target_player ||
-          p.target_player_name ||
-          p.target ||
-          p.target_user_name ||
-          null,
+        target_player: getDailyPowerTargetPlayer(p),
         created_at: p.created_at || null,
       }));
 
