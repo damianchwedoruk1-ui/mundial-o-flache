@@ -285,6 +285,12 @@ type AllPodiumPredictionType = {
   third_place: string;
 };
 
+type FinalPodiumResultsType = {
+  firstPlace: string;
+  secondPlace: string;
+  thirdPlace: string;
+};
+
 type AllPredictionsType = {
   user_name: string;
   user_email: string;
@@ -543,6 +549,13 @@ export default function DashboardPage() {
   const [allPodiumPredictions, setAllPodiumPredictions] = useState<
     AllPodiumPredictionType[]
   >([]);
+  const [finalPodiumResults, setFinalPodiumResults] = useState<FinalPodiumResultsType>({
+    firstPlace: "",
+    secondPlace: "",
+    thirdPlace: "",
+  });
+  const [savedFinalPodiumResults, setSavedFinalPodiumResults] =
+    useState<FinalPodiumResultsType | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "bracket">("dashboard");
   const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
@@ -697,6 +710,30 @@ export default function DashboardPage() {
     }
   };
 
+  const loadFinalPodiumResults = async () => {
+    const { data, error } = await supabase
+      .from("final_podium_results")
+      .select("*")
+      .eq("id", "official")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Brak tabeli final_podium_results albo błąd odczytu:", error.message);
+      return;
+    }
+
+    if (data) {
+      const loadedResults = {
+        firstPlace: data.first_place || "",
+        secondPlace: data.second_place || "",
+        thirdPlace: data.third_place || "",
+      };
+
+      setFinalPodiumResults(loadedResults);
+      setSavedFinalPodiumResults(loadedResults);
+    }
+  };
+
   const loadAllDailyPowers = async () => {
     const { data } = await supabase
       .from("daily_powers")
@@ -844,6 +881,7 @@ export default function DashboardPage() {
 
       await loadAllPredictions();
       await loadAllPodiumPredictions();
+      await loadFinalPodiumResults();
       await loadAllDailyPowers();
       await loadKnockoutBracket();
     };
@@ -1403,8 +1441,38 @@ export default function DashboardPage() {
       });
     });
 
+    if (savedFinalPodiumResults) {
+      allPodiumPredictions.forEach((prediction) => {
+        const player = findPlayerRowByName(
+          table,
+          prediction.user_name || prediction.user_email
+        );
+
+        if (!player) return;
+
+        let podiumBonus = 0;
+
+        if (prediction.first_place === savedFinalPodiumResults.firstPlace) {
+          podiumBonus += 9;
+        }
+
+        if (prediction.second_place === savedFinalPodiumResults.secondPlace) {
+          podiumBonus += 6;
+        }
+
+        if (prediction.third_place === savedFinalPodiumResults.thirdPlace) {
+          podiumBonus += 3;
+        }
+
+        if (podiumBonus > 0) {
+          player.points += podiumBonus;
+          player.daily_points.PODIUM = (player.daily_points.PODIUM || 0) + podiumBonus;
+        }
+      });
+    }
+
     return table;
-  }, [results, allPredictions, allDailyPowers, bracketSlots, isEveningPowerSettlementClosed]);
+  }, [results, allPredictions, allDailyPowers, bracketSlots, isEveningPowerSettlementClosed, savedFinalPodiumResults, allPodiumPredictions]);
 
   const powerLogs = useMemo<PowerLogType[]>(() => {
     const logs: PowerLogType[] = [];
@@ -1679,6 +1747,60 @@ export default function DashboardPage() {
     }));
   };
 
+
+  const handleFinalPodiumResultChange = (
+    field: "firstPlace" | "secondPlace" | "thirdPlace",
+    value: string
+  ) => {
+    if (!isAdmin) return;
+
+    setFinalPodiumResults((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const saveFinalPodiumResults = async () => {
+    if (!isAdmin) return;
+
+    if (
+      !finalPodiumResults.firstPlace ||
+      !finalPodiumResults.secondPlace ||
+      !finalPodiumResults.thirdPlace
+    ) {
+      alert("Wybierz faktyczne 1, 2 i 3 miejsce.");
+      return;
+    }
+
+    const uniqueTeams = new Set([
+      finalPodiumResults.firstPlace,
+      finalPodiumResults.secondPlace,
+      finalPodiumResults.thirdPlace,
+    ]);
+
+    if (uniqueTeams.size !== 3) {
+      alert("Każde miejsce musi mieć inny zespół.");
+      return;
+    }
+
+    const { error } = await supabase.from("final_podium_results").upsert({
+      id: "official",
+      first_place: finalPodiumResults.firstPlace,
+      second_place: finalPodiumResults.secondPlace,
+      third_place: finalPodiumResults.thirdPlace,
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Błąd zapisu faktycznego podium: " + error.message);
+      return;
+    }
+
+    setSavedFinalPodiumResults(finalPodiumResults);
+    await loadFinalPodiumResults();
+
+    alert("Faktyczne podium zapisane. Punkty zostały doliczone do tabeli.");
+  };
 
   const handleBracketSlotChange = (slotId: string, teamName: string) => {
     setBracketSlots((prev) => ({
@@ -2138,6 +2260,7 @@ export default function DashboardPage() {
       { name: "results", column: "match_id", value: -1 },
       { name: "daily_powers", column: "user_email", value: "__never__" },
       { name: "final_predictions", column: "user_email", value: "__never__" },
+      { name: "final_podium_results", column: "id", value: "__never__" },
       { name: "knockout_bracket", column: "slot_id", value: "__never__" },
     ];
 
@@ -2169,6 +2292,12 @@ export default function DashboardPage() {
     });
     setSavedPodiumPrediction(null);
     setAllPodiumPredictions([]);
+    setFinalPodiumResults({
+      firstPlace: "",
+      secondPlace: "",
+      thirdPlace: "",
+    });
+    setSavedFinalPodiumResults(null);
     setBracketSlots({});
     setDoublePrediction({
       matchId: "",
@@ -2179,6 +2308,7 @@ export default function DashboardPage() {
 
     await loadAllPredictions();
     await loadAllPodiumPredictions();
+    await loadFinalPodiumResults();
     await loadAllDailyPowers();
     await loadKnockoutBracket();
 
@@ -3040,6 +3170,82 @@ export default function DashboardPage() {
               ))}
             </div>
         </section>
+        )}
+
+
+        {isAdmin && (
+          <section className="panel" style={{ gridColumn: "1 / -1" }}>
+            <div className="panel-header">
+              <div>
+                <h2>🏁 Faktyczne podium turnieju</h2>
+                <p className="muted" style={{ marginTop: "6px" }}>
+                  Po zakończeniu mundialu wybierz rzeczywiste 1, 2 i 3 miejsce.
+                  Punkty doliczą się automatycznie: 9 / 6 / 3.
+                </p>
+              </div>
+
+              <button className="btn" onClick={saveFinalPodiumResults}>
+                Zapisz faktyczne podium
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              {[
+                { field: "firstPlace", label: "🥇 Mistrz świata", points: "+9 pkt" },
+                { field: "secondPlace", label: "🥈 Drugie miejsce", points: "+6 pkt" },
+                { field: "thirdPlace", label: "🥉 Trzecie miejsce", points: "+3 pkt" },
+              ].map((item) => (
+                <div
+                  key={`official-${item.field}`}
+                  className="result-card"
+                  style={{ padding: "16px", borderRadius: "16px" }}
+                >
+                  <strong>{item.label}</strong>
+                  <p className="muted" style={{ marginTop: "4px" }}>{item.points}</p>
+
+                  <select
+                    value={finalPodiumResults[item.field as keyof FinalPodiumResultsType]}
+                    onChange={(e) =>
+                      handleFinalPodiumResultChange(
+                        item.field as "firstPlace" | "secondPlace" | "thirdPlace",
+                        e.target.value
+                      )
+                    }
+                    style={{
+                      width: "100%",
+                      marginTop: "10px",
+                      padding: "13px",
+                      borderRadius: "14px",
+                      border: "1px solid rgba(34, 197, 94, 0.8)",
+                      background: "rgba(15, 23, 42, 0.95)",
+                      color: "white",
+                      fontWeight: 800,
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">Wybierz zespół</option>
+                    {worldCupTeams.map((team) => (
+                      <option key={`official-${item.field}-${team}`} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            {savedFinalPodiumResults && (
+              <p className="muted" style={{ marginTop: "12px" }}>
+                Zapisane podium: 🥇 {savedFinalPodiumResults.firstPlace}, 🥈 {savedFinalPodiumResults.secondPlace}, 🥉 {savedFinalPodiumResults.thirdPlace}
+              </p>
+            )}
+          </section>
         )}
 
         <section className="panel" style={{ gridColumn: "1 / -1" }}>
