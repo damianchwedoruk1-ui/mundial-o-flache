@@ -2902,7 +2902,7 @@ export default function DashboardPage() {
               </>
             )}
           </p>
-          {arePredictionsRevealed && isEveningPowerSettlementClosed && (
+          {isEveningPowerSettlementClosed && (
             <div
               style={{
                 marginTop: "16px",
