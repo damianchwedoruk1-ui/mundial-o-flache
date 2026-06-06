@@ -552,7 +552,7 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
-  const currentMatchDate = "07.06.2026"; // TEST MODE: wymuszony drugi dzień meczowy
+  const currentMatchDate = "08.06.2026"; // TEST MODE: wymuszony drugi dzień meczowy
 
   const visibleMatches = useMemo(() => {
     return demoMatches.filter((match) => match.date === currentMatchDate);
