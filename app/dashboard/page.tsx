@@ -2045,7 +2045,10 @@ export default function DashboardPage() {
           }
 
           .evening-power-mode .premium-power-card button,
-          .evening-power-mode .power-inner button {
+          .evening-power-mode .power-inner button,
+          .evening-power-mode .premium-power-card .btn,
+          .evening-power-mode .power-card button,
+          .evening-power-mode .power-card .btn {
             display: none !important;
           }
 
