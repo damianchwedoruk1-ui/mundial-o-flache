@@ -488,7 +488,7 @@ function getEveningPowerWindow(currentMatchDate: string) {
 
   const closesAt = new Date(currentDay);
   closesAt.setDate(closesAt.getDate() - 1);
-  closesAt.setHours(15, 55, 0, 0);
+  closesAt.setHours(15, 58, 0, 0);
 
   return { opensAt, closesAt };
 }
