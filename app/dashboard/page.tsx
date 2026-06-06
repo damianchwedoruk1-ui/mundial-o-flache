@@ -99,6 +99,82 @@ const knockoutLaterRounds = [
   { title: "Mecz o 3. miejsce", items: ["Przegrany półfinału 1 vs przegrany półfinału 2"] },
 ];
 
+
+const fullGroupPredictionTableMatches = [
+  { id: 1, group: "Grupa A", date: "11.06.2026", time: "21:00", teamA: "Meksyk", teamB: "Republika Południowej Afryki" },
+  { id: 2, group: "Grupa A", date: "12.06.2026", time: "04:00", teamA: "Korea Południowa", teamB: "Czechy" },
+  { id: 3, group: "Grupa B", date: "12.06.2026", time: "21:00", teamA: "Kanada", teamB: "Bośnia i Hercegowina" },
+  { id: 4, group: "Grupa D", date: "13.06.2026", time: "03:00", teamA: "USA", teamB: "Paragwaj" },
+  { id: 5, group: "Grupa B", date: "13.06.2026", time: "21:00", teamA: "Katar", teamB: "Szwajcaria" },
+  { id: 6, group: "Grupa C", date: "14.06.2026", time: "00:00", teamA: "Brazylia", teamB: "Maroko" },
+  { id: 7, group: "Grupa C", date: "14.06.2026", time: "03:00", teamA: "Haiti", teamB: "Szkocja" },
+  { id: 8, group: "Grupa D", date: "14.06.2026", time: "06:00", teamA: "Australia", teamB: "Turcja" },
+  { id: 9, group: "Grupa E", date: "14.06.2026", time: "19:00", teamA: "Niemcy", teamB: "Curacao" },
+  { id: 10, group: "Grupa F", date: "14.06.2026", time: "22:00", teamA: "Holandia", teamB: "Japonia" },
+  { id: 11, group: "Grupa E", date: "15.06.2026", time: "01:00", teamA: "Wybrzeże Kości Słoniowej", teamB: "Ekwador" },
+  { id: 12, group: "Grupa F", date: "15.06.2026", time: "04:00", teamA: "Tunezja", teamB: "Szwecja" },
+  { id: 13, group: "Grupa H", date: "15.06.2026", time: "18:00", teamA: "Hiszpania", teamB: "Wyspy Zielonego Przylądka" },
+  { id: 14, group: "Grupa G", date: "15.06.2026", time: "21:00", teamA: "Belgia", teamB: "Egipt" },
+  { id: 15, group: "Grupa H", date: "16.06.2026", time: "00:00", teamA: "Arabia Saudyjska", teamB: "Urugwaj" },
+  { id: 16, group: "Grupa G", date: "16.06.2026", time: "03:00", teamA: "Iran", teamB: "Nowa Zelandia" },
+  { id: 17, group: "Grupa I", date: "16.06.2026", time: "21:00", teamA: "Francja", teamB: "Senegal" },
+  { id: 18, group: "Grupa I", date: "17.06.2026", time: "00:00", teamA: "Irak", teamB: "Norwegia" },
+  { id: 19, group: "Grupa J", date: "17.06.2026", time: "03:00", teamA: "Argentyna", teamB: "Algieria" },
+  { id: 20, group: "Grupa J", date: "17.06.2026", time: "06:00", teamA: "Austria", teamB: "Jordania" },
+  { id: 21, group: "Grupa K", date: "17.06.2026", time: "19:00", teamA: "Portugalia", teamB: "Demokratyczna Republika Konga" },
+  { id: 22, group: "Grupa L", date: "17.06.2026", time: "22:00", teamA: "Anglia", teamB: "Chorwacja" },
+  { id: 23, group: "Grupa L", date: "18.06.2026", time: "01:00", teamA: "Ghana", teamB: "Panama" },
+  { id: 24, group: "Grupa K", date: "18.06.2026", time: "04:00", teamA: "Uzbekistan", teamB: "Kolumbia" },
+  { id: 25, group: "Grupa A", date: "18.06.2026", time: "18:00", teamA: "Czechy", teamB: "Republika Południowej Afryki" },
+  { id: 26, group: "Grupa B", date: "18.06.2026", time: "21:00", teamA: "Szwajcaria", teamB: "Bośnia i Hercegowina" },
+  { id: 27, group: "Grupa B", date: "19.06.2026", time: "00:00", teamA: "Kanada", teamB: "Katar" },
+  { id: 28, group: "Grupa A", date: "19.06.2026", time: "03:00", teamA: "Meksyk", teamB: "Korea Południowa" },
+  { id: 29, group: "Grupa D", date: "19.06.2026", time: "21:00", teamA: "USA", teamB: "Australia" },
+  { id: 30, group: "Grupa C", date: "19.06.2026", time: "21:00", teamA: "Szkocja", teamB: "Maroko" },
+  { id: 31, group: "Grupa C", date: "20.06.2026", time: "03:00", teamA: "Brazylia", teamB: "Haiti" },
+  { id: 32, group: "Grupa D", date: "20.06.2026", time: "06:00", teamA: "Turcja", teamB: "Paragwaj" },
+  { id: 33, group: "Grupa F", date: "20.06.2026", time: "19:00", teamA: "Holandia", teamB: "Szwecja" },
+  { id: 34, group: "Grupa E", date: "20.06.2026", time: "22:00", teamA: "Niemcy", teamB: "Wybrzeże Kości Słoniowej" },
+  { id: 35, group: "Grupa E", date: "21.06.2026", time: "02:00", teamA: "Ekwador", teamB: "Curacao" },
+  { id: 36, group: "Grupa F", date: "21.06.2026", time: "06:00", teamA: "Tunezja", teamB: "Japonia" },
+  { id: 37, group: "Grupa H", date: "21.06.2026", time: "18:00", teamA: "Hiszpania", teamB: "Arabia Saudyjska" },
+  { id: 38, group: "Grupa G", date: "21.06.2026", time: "21:00", teamA: "Belgia", teamB: "Iran" },
+  { id: 39, group: "Grupa H", date: "22.06.2026", time: "00:00", teamA: "Urugwaj", teamB: "Wyspy Zielonego Przylądka" },
+  { id: 40, group: "Grupa G", date: "22.06.2026", time: "03:00", teamA: "Nowa Zelandia", teamB: "Egipt" },
+  { id: 41, group: "Grupa J", date: "22.06.2026", time: "19:00", teamA: "Argentyna", teamB: "Austria" },
+  { id: 42, group: "Grupa I", date: "22.06.2026", time: "23:00", teamA: "Francja", teamB: "Irak" },
+  { id: 43, group: "Grupa I", date: "23.06.2026", time: "02:00", teamA: "Norwegia", teamB: "Senegal" },
+  { id: 44, group: "Grupa J", date: "23.06.2026", time: "05:00", teamA: "Jordania", teamB: "Algieria" },
+  { id: 45, group: "Grupa K", date: "23.06.2026", time: "19:00", teamA: "Portugalia", teamB: "Uzbekistan" },
+  { id: 46, group: "Grupa L", date: "23.06.2026", time: "22:00", teamA: "Anglia", teamB: "Ghana" },
+  { id: 47, group: "Grupa L", date: "24.06.2026", time: "01:00", teamA: "Panama", teamB: "Chorwacja" },
+  { id: 48, group: "Grupa K", date: "24.06.2026", time: "04:00", teamA: "Kolumbia", teamB: "Demokratyczna Republika Konga" },
+  { id: 49, group: "Grupa B", date: "24.06.2026", time: "21:00", teamA: "Szwajcaria", teamB: "Kanada" },
+  { id: 50, group: "Grupa B", date: "24.06.2026", time: "21:00", teamA: "Bośnia i Hercegowina", teamB: "Katar" },
+  { id: 51, group: "Grupa C", date: "25.06.2026", time: "00:00", teamA: "Brazylia", teamB: "Szkocja" },
+  { id: 52, group: "Grupa C", date: "25.06.2026", time: "00:00", teamA: "Maroko", teamB: "Haiti" },
+  { id: 53, group: "Grupa A", date: "25.06.2026", time: "03:00", teamA: "Meksyk", teamB: "Czechy" },
+  { id: 54, group: "Grupa A", date: "25.06.2026", time: "03:00", teamA: "Korea Południowa", teamB: "Republika Południowej Afryki" },
+  { id: 55, group: "Grupa E", date: "25.06.2026", time: "22:00", teamA: "Ekwador", teamB: "Niemcy" },
+  { id: 56, group: "Grupa E", date: "25.06.2026", time: "22:00", teamA: "Curacao", teamB: "Wybrzeże Kości Słoniowej" },
+  { id: 57, group: "Grupa F", date: "26.06.2026", time: "01:00", teamA: "Tunezja", teamB: "Holandia" },
+  { id: 58, group: "Grupa F", date: "26.06.2026", time: "01:00", teamA: "Japonia", teamB: "Szwecja" },
+  { id: 59, group: "Grupa D", date: "26.06.2026", time: "04:00", teamA: "USA", teamB: "Turcja" },
+  { id: 60, group: "Grupa D", date: "26.06.2026", time: "04:00", teamA: "Paragwaj", teamB: "Australia" },
+  { id: 61, group: "Grupa I", date: "26.06.2026", time: "21:00", teamA: "Norwegia", teamB: "Francja" },
+  { id: 62, group: "Grupa I", date: "26.06.2026", time: "21:00", teamA: "Senegal", teamB: "Irak" },
+  { id: 63, group: "Grupa H", date: "27.06.2026", time: "02:00", teamA: "Urugwaj", teamB: "Hiszpania" },
+  { id: 64, group: "Grupa H", date: "27.06.2026", time: "02:00", teamA: "Wyspy Zielonego Przylądka", teamB: "Arabia Saudyjska" },
+  { id: 65, group: "Grupa G", date: "27.06.2026", time: "05:00", teamA: "Nowa Zelandia", teamB: "Belgia" },
+  { id: 66, group: "Grupa G", date: "27.06.2026", time: "05:00", teamA: "Egipt", teamB: "Iran" },
+  { id: 67, group: "Grupa L", date: "27.06.2026", time: "23:00", teamA: "Panama", teamB: "Anglia" },
+  { id: 68, group: "Grupa L", date: "27.06.2026", time: "23:00", teamA: "Chorwacja", teamB: "Ghana" },
+  { id: 69, group: "Grupa K", date: "28.06.2026", time: "01:30", teamA: "Kolumbia", teamB: "Portugalia" },
+  { id: 70, group: "Grupa K", date: "28.06.2026", time: "01:30", teamA: "Demokratyczna Republika Konga", teamB: "Uzbekistan" },
+  { id: 71, group: "Grupa J", date: "28.06.2026", time: "04:00", teamA: "Argentyna", teamB: "Jordania" },
+  { id: 72, group: "Grupa J", date: "28.06.2026", time: "04:00", teamA: "Algieria", teamB: "Austria" },
+];
+
 function getFlag(teamName: string) {
   return flags[teamName] || "https://flagcdn.com/w40/un.png";
 }
@@ -907,7 +983,7 @@ export default function DashboardPage() {
   }, []);
 
   const allPredictionTableMatches = useMemo(() => {
-    return [...demoMatches, ...bracketPredictionTableMatches];
+    return [...fullGroupPredictionTableMatches, ...bracketPredictionTableMatches];
   }, [bracketPredictionTableMatches]);
 
   const predictionTableMatches = useMemo(() => {
@@ -925,7 +1001,7 @@ export default function DashboardPage() {
   }, [results, visibleMatches]);
 
   const resolvePredictionTableMatch = (match: any) => {
-    if (typeof match.id === "number" && match.id >= 49 && match.id <= 64) {
+    if (typeof match.id === "number" && match.group?.startsWith("Drabinka")) {
       return {
         ...match,
         teamA: bracketSlots[`M${match.id}_home`] || match.teamA,
