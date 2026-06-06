@@ -488,7 +488,7 @@ function getEveningPowerWindow(currentMatchDate: string) {
 
   const closesAt = new Date(currentDay);
   closesAt.setDate(closesAt.getDate() - 1);
-  closesAt.setHours(15, 58, 0, 0);
+  closesAt.setHours(20, 0, 0, 0);
 
   return { opensAt, closesAt };
 }
@@ -2902,7 +2902,7 @@ export default function DashboardPage() {
               </>
             )}
           </p>
-          {arePredictionsRevealed && (
+          {arePredictionsRevealed && isEveningPowerSettlementClosed && (
             <div
               style={{
                 marginTop: "16px",
