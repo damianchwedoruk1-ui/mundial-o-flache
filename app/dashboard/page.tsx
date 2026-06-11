@@ -2422,14 +2422,6 @@ export default function DashboardPage() {
       savedPredictions[match.id] !== undefined
   );
 
-  const latestResultMatches = demoMatches
-    .filter((match) => {
-      const result = results[match.id];
-      return result?.homeScore !== "" && result?.awayScore !== "";
-    })
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 15);
-
   const selectedDoubleMatch =
     visibleMatches.find((match) => match.id === Number(doublePrediction.matchId)) ||
     demoMatches.find((match) => match.id === Number(doublePrediction.matchId));
@@ -4017,47 +4009,6 @@ export default function DashboardPage() {
             </div>
             );
           })}
-        </section>
-
-        <section className="panel">
-          <div className="panel-header">
-            <h2>📈 Ostatnie wyniki</h2>
-          </div>
-
-          {latestResultMatches.length === 0 ? (
-            <p className="muted">
-              Brak wyników. Ta tabela uzupełni się automatycznie po zapisaniu
-              pierwszego wyniku meczu.
-            </p>
-          ) : (
-            latestResultMatches.map((match) => {
-              const result = results[match.id];
-
-              return (
-                <div
-                  className="result-card"
-                  key={`last-result-${match.id}`}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 10,
-                    gap: "12px",
-                  }}
-                >
-                  <span>
-                    <span className="muted">{match.date} · {match.time}</span>
-                    <br />
-                    {match.teamA} <span className="muted">vs</span>{" "}
-                    {match.teamB}
-                  </span>
-
-                  <strong className="points">
-                    {result ? `${result.homeScore}:${result.awayScore}` : "-:-"}
-                  </strong>
-                </div>
-              );
-            })
-          )}
         </section>
 
         <section className="panel" style={{ gridColumn: "1 / -1" }}>
