@@ -559,6 +559,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "bracket">("dashboard");
   const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
   const [isFinalPodiumOpen, setIsFinalPodiumOpen] = useState(false);
+  const [isDailyPointsOpen, setIsDailyPointsOpen] = useState(false);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
   const router = useRouter();
@@ -1682,6 +1683,23 @@ export default function DashboardPage() {
       (a, b) => b.points - a.points || b.exact_hits - a.exact_hits
     );
   }, [standings]);
+
+  const dailyPointsDate = eveningSettlementDate || previousMatchDate || currentMatchDate;
+
+  const dailyPointsRows = useMemo(() => {
+    if (!dailyPointsDate) return [];
+
+    return players
+      .map((player) => {
+        const standingRow = standings.find((row) => row.name === player.name);
+
+        return {
+          name: player.name,
+          points: standingRow?.daily_points?.[dailyPointsDate] || 0,
+        };
+      })
+      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  }, [standings, dailyPointsDate]);
 
   const exactStats = useMemo(() => {
     return players.map((player) => {
@@ -2869,6 +2887,56 @@ export default function DashboardPage() {
 
           <div style={{ transform: "scale(0.92)", transformOrigin: "top left", width: "108%" }}>
             <Standings rows={standings} />
+          </div>
+
+          <div
+            style={{
+              marginTop: "16px",
+              paddingTop: "14px",
+              borderTop: "1px solid rgba(148, 163, 184, 0.18)",
+            }}
+          >
+            <div className="panel-header" style={{ marginBottom: isDailyPointsOpen ? "10px" : 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "18px" }}>📅 Punkty dnia</h3>
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                  {dailyPointsDate
+                    ? `Dzień meczowy: ${dailyPointsDate}`
+                    : "Brak dnia do rozliczenia"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setIsDailyPointsOpen((prev) => !prev)}
+                style={{ padding: "9px 12px", fontSize: "13px" }}
+              >
+                {isDailyPointsOpen ? "Ukryj" : "Pokaż"}
+              </button>
+            </div>
+
+            {isDailyPointsOpen && (
+              <div style={{ display: "grid", gap: "8px" }}>
+                {dailyPointsRows.map((row, index) => (
+                  <div
+                    key={row.name}
+                    className="standing-row"
+                    style={{ gridTemplateColumns: "42px 1fr auto" }}
+                  >
+                    <div className={`place ${index === 0 ? "first" : ""}`}>
+                      {index + 1}
+                    </div>
+                    <strong>{row.name}</strong>
+                    <span className="points">{row.points} pkt</span>
+                  </div>
+                ))}
+
+                <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                  Tu patrzycie przy mocach wieczornych: Słabiak, Zamianka i Złodziej bazują na punktach tego dnia.
+                </p>
+              </div>
+            )}
           </div>
 
           {arePredictionsRevealed && (
