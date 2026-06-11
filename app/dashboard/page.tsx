@@ -1066,6 +1066,20 @@ export default function DashboardPage() {
     return visibleMatches;
   }, [results, visibleMatches]);
 
+  const shouldShowPredictionsResultsTable = useMemo(() => {
+    if (arePredictionsRevealed) return true;
+
+    return predictionTableMatches.some((match) => {
+      const result = results[match.id];
+
+      return Boolean(
+        result &&
+          result.homeScore !== "" &&
+          result.awayScore !== ""
+      );
+    });
+  }, [arePredictionsRevealed, predictionTableMatches, results]);
+
   const resolvePredictionTableMatch = (match: any) => {
     if (typeof match.id === "number" && match.group?.startsWith("Drabinka")) {
       return {
@@ -2422,6 +2436,14 @@ export default function DashboardPage() {
       savedPredictions[match.id] !== undefined
   );
 
+  const latestResultMatches = demoMatches
+    .filter((match) => {
+      const result = results[match.id];
+      return result?.homeScore !== "" && result?.awayScore !== "";
+    })
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 15);
+
   const selectedDoubleMatch =
     visibleMatches.find((match) => match.id === Number(doublePrediction.matchId)) ||
     demoMatches.find((match) => match.id === Number(doublePrediction.matchId));
@@ -2931,7 +2953,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {arePredictionsRevealed && (
+          {shouldShowPredictionsResultsTable && (
             <div
               style={{
                 marginTop: "18px",
