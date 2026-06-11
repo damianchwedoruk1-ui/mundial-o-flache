@@ -558,7 +558,6 @@ export default function DashboardPage() {
     useState<FinalPodiumResultsType | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "bracket">("dashboard");
   const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
-  const [isFinalPodiumOpen, setIsFinalPodiumOpen] = useState(false);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
   const router = useRouter();
@@ -578,6 +577,29 @@ export default function DashboardPage() {
   const previousMatchDate = useMemo(() => {
     return getPreviousMatchDate(demoMatches, currentMatchDate);
   }, [currentMatchDate]);
+
+  const resultInputMatches = useMemo(() => {
+    const datesToShow = new Set<string>();
+
+    if (previousMatchDate) {
+      datesToShow.add(previousMatchDate);
+    }
+
+    if (currentMatchDate) {
+      datesToShow.add(currentMatchDate);
+    }
+
+    return demoMatches
+      .filter((match) => datesToShow.has(match.date))
+      .sort((a, b) => {
+        const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
+
+        if (dateDiff !== 0) return dateDiff;
+
+        return String(a.time || "").localeCompare(String(b.time || ""));
+      });
+  }, [currentMatchDate, previousMatchDate]);
+
 
   const eveningSettlementDate = useMemo(() => {
     const finishedDates = Array.from(
@@ -3180,96 +3202,71 @@ export default function DashboardPage() {
               <div>
                 <h2>🏁 Faktyczne podium turnieju</h2>
                 <p className="muted" style={{ marginTop: "6px" }}>
-                  Używane tylko raz po zakończeniu mundialu. Punkty doliczą się automatycznie: 9 / 6 / 3.
+                  Po zakończeniu mundialu wybierz rzeczywiste 1, 2 i 3 miejsce.
+                  Punkty doliczą się automatycznie: 9 / 6 / 3.
                 </p>
               </div>
 
-              <button
-                className="btn secondary"
-                onClick={() => setIsFinalPodiumOpen((prev) => !prev)}
-              >
-                {isFinalPodiumOpen ? "Ukryj" : "Pokaż"}
+              <button className="btn" onClick={saveFinalPodiumResults}>
+                Zapisz faktyczne podium
               </button>
             </div>
 
-            {savedFinalPodiumResults && !isFinalPodiumOpen && (
-              <p className="muted" style={{ marginTop: "-4px", marginBottom: 0 }}>
-                Zapisane podium: 🥇 {savedFinalPodiumResults.firstPlace || "-"}, 🥈 {savedFinalPodiumResults.secondPlace || "-"}, 🥉 {savedFinalPodiumResults.thirdPlace || "-"}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              {[
+                { field: "firstPlace", label: "🥇 Mistrz świata", points: "+9 pkt" },
+                { field: "secondPlace", label: "🥈 Drugie miejsce", points: "+6 pkt" },
+                { field: "thirdPlace", label: "🥉 Trzecie miejsce", points: "+3 pkt" },
+              ].map((item) => (
+                <div
+                  key={`official-${item.field}`}
+                  className="result-card"
+                  style={{ padding: "16px", borderRadius: "16px" }}
+                >
+                  <strong>{item.label}</strong>
+                  <p className="muted" style={{ marginTop: "4px" }}>{item.points}</p>
+
+                  <select
+                    value={finalPodiumResults[item.field as keyof FinalPodiumResultsType]}
+                    onChange={(e) =>
+                      handleFinalPodiumResultChange(
+                        item.field as "firstPlace" | "secondPlace" | "thirdPlace",
+                        e.target.value
+                      )
+                    }
+                    style={{
+                      width: "100%",
+                      marginTop: "10px",
+                      padding: "13px",
+                      borderRadius: "14px",
+                      border: "1px solid rgba(34, 197, 94, 0.8)",
+                      background: "rgba(15, 23, 42, 0.95)",
+                      color: "white",
+                      fontWeight: 800,
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">Wybierz zespół</option>
+                    {worldCupTeams.map((team) => (
+                      <option key={`official-${item.field}-${team}`} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            {savedFinalPodiumResults && (
+              <p className="muted" style={{ marginTop: "12px" }}>
+                Zapisane podium: 🥇 {savedFinalPodiumResults.firstPlace}, 🥈 {savedFinalPodiumResults.secondPlace}, 🥉 {savedFinalPodiumResults.thirdPlace}
               </p>
-            )}
-
-            {isFinalPodiumOpen && (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: "14px",
-                  }}
-                >
-                  {[
-                    { field: "firstPlace", label: "🥇 Mistrz świata", points: "+9 pkt" },
-                    { field: "secondPlace", label: "🥈 Drugie miejsce", points: "+6 pkt" },
-                    { field: "thirdPlace", label: "🥉 Trzecie miejsce", points: "+3 pkt" },
-                  ].map((item) => (
-                    <div
-                      key={`official-${item.field}`}
-                      className="result-card"
-                      style={{ padding: "16px", borderRadius: "16px" }}
-                    >
-                      <strong>{item.label}</strong>
-                      <p className="muted" style={{ marginTop: "4px" }}>{item.points}</p>
-
-                      <select
-                        value={finalPodiumResults[item.field as keyof FinalPodiumResultsType]}
-                        onChange={(e) =>
-                          handleFinalPodiumResultChange(
-                            item.field as "firstPlace" | "secondPlace" | "thirdPlace",
-                            e.target.value
-                          )
-                        }
-                        style={{
-                          width: "100%",
-                          marginTop: "10px",
-                          padding: "13px",
-                          borderRadius: "14px",
-                          border: "1px solid rgba(34, 197, 94, 0.8)",
-                          background: "rgba(15, 23, 42, 0.95)",
-                          color: "white",
-                          fontWeight: 800,
-                          outline: "none",
-                        }}
-                      >
-                        <option value="">Wybierz zespół</option>
-                        {worldCupTeams.map((team) => (
-                          <option key={`official-${item.field}-${team}`} value={team}>
-                            {team}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "10px",
-                    marginTop: "14px",
-                  }}
-                >
-                  <button className="btn" onClick={saveFinalPodiumResults}>
-                    Zapisz faktyczne podium
-                  </button>
-                </div>
-
-                {savedFinalPodiumResults && (
-                  <p className="muted" style={{ marginTop: "12px" }}>
-                    Zapisane podium: 🥇 {savedFinalPodiumResults.firstPlace}, 🥈 {savedFinalPodiumResults.secondPlace}, 🥉 {savedFinalPodiumResults.thirdPlace}
-                  </p>
-                )}
-              </>
             )}
           </section>
         )}
@@ -3765,7 +3762,11 @@ export default function DashboardPage() {
               <h2>📈 Wyniki meczów</h2>
 
               <p className="muted" style={{ marginTop: "6px" }}>
-                Uzupełnij wyniki tylko dla dnia meczowego: <strong>{currentMatchDate}</strong>.
+                Uzupełnij wyniki dla poprzedniego i aktualnego dnia meczowego:{" "}
+                <strong>
+                  {[previousMatchDate, currentMatchDate].filter(Boolean).join(" oraz ")}
+                </strong>
+                .
               </p>
             </div>
 
@@ -3778,11 +3779,11 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {visibleMatches.length === 0 && (
-            <p className="muted">Brak meczów dla aktualnego dnia.</p>
+          {resultInputMatches.length === 0 && (
+            <p className="muted">Brak meczów do wpisania wyniku.</p>
           )}
 
-          {visibleMatches.map((match) => {
+          {resultInputMatches.map((match) => {
             const displayMatch = getDisplayMatch(match);
 
             return (
