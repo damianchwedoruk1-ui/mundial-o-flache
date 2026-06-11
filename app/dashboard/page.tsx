@@ -1016,8 +1016,6 @@ export default function DashboardPage() {
   const allPlayersSubmitted =
     players.length > 0 && submittedPlayersCount === players.length;
 
-  const arePredictionsRevealed = isAfterDeadline || allPlayersSubmitted;
-
   const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
 
   const bracketPredictionTableMatches = useMemo(() => {
@@ -1053,32 +1051,26 @@ export default function DashboardPage() {
   }, [bracketPredictionTableMatches]);
 
   const predictionTableMatches = useMemo(() => {
-    const lastFinishedDate = Array.from(
-      new Set(demoMatches.map((match) => match.date).filter(Boolean))
-    )
-      .filter((date) => isFullMatchDateFinished(date, results))
-      .sort((a, b) => parseMatchDate(b).getTime() - parseMatchDate(a).getTime())[0];
+    const datesToShow = new Set<string>();
 
-    if (lastFinishedDate) {
-      return demoMatches.filter((match) => match.date === lastFinishedDate);
+    if (previousMatchDate) {
+      datesToShow.add(previousMatchDate);
     }
 
-    return visibleMatches;
-  }, [results, visibleMatches]);
+    if (currentMatchDate) {
+      datesToShow.add(currentMatchDate);
+    }
 
-  const shouldShowPredictionsResultsTable = useMemo(() => {
-    if (arePredictionsRevealed) return true;
+    return demoMatches
+      .filter((match) => datesToShow.has(match.date))
+      .sort((a, b) => {
+        const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
 
-    return predictionTableMatches.some((match) => {
-      const result = results[match.id];
+        if (dateDiff !== 0) return dateDiff;
 
-      return Boolean(
-        result &&
-          result.homeScore !== "" &&
-          result.awayScore !== ""
-      );
-    });
-  }, [arePredictionsRevealed, predictionTableMatches, results]);
+        return String(a.time || "").localeCompare(String(b.time || ""));
+      });
+  }, [currentMatchDate, previousMatchDate]);
 
   const resolvePredictionTableMatch = (match: any) => {
     if (typeof match.id === "number" && match.group?.startsWith("Drabinka")) {
@@ -2436,14 +2428,6 @@ export default function DashboardPage() {
       savedPredictions[match.id] !== undefined
   );
 
-  const latestResultMatches = demoMatches
-    .filter((match) => {
-      const result = results[match.id];
-      return result?.homeScore !== "" && result?.awayScore !== "";
-    })
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 15);
-
   const selectedDoubleMatch =
     visibleMatches.find((match) => match.id === Number(doublePrediction.matchId)) ||
     demoMatches.find((match) => match.id === Number(doublePrediction.matchId));
@@ -2953,36 +2937,39 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {shouldShowPredictionsResultsTable && (
-            <div
-              style={{
-                marginTop: "18px",
-                paddingTop: "16px",
-                borderTop: "1px solid rgba(148, 163, 184, 0.18)",
-              }}
-            >
-              <div className="panel-header" style={{ marginBottom: "10px" }}>
+          <div
+            style={{
+              marginTop: "18px",
+              paddingTop: "16px",
+              borderTop: "1px solid rgba(148, 163, 184, 0.18)",
+            }}
+          >
+            <div className="panel-header" style={{ marginBottom: "10px" }}>
+              <div>
                 <h3 style={{ margin: 0, fontSize: "18px" }}>
                   👁️ Typy graczy i wyniki
                 </h3>
-
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={() => setIsPredictionsTableOpen(true)}
-                  style={{ padding: "9px 12px", fontSize: "13px" }}
-                >
-                  Otwórz pełną tabelę
-                </button>
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                  Widoczne cały czas: wczorajszy i dzisiejszy dzień meczowy.
+                </p>
               </div>
 
-              {renderPredictionsResultsTable(predictionTableMatches, "430px")}
-
-              <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
-                Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni.
-              </p>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setIsPredictionsTableOpen(true)}
+                style={{ padding: "9px 12px", fontSize: "13px" }}
+              >
+                Otwórz pełną tabelę
+              </button>
             </div>
-          )}
+
+            {renderPredictionsResultsTable(predictionTableMatches, "430px")}
+
+            <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
+              Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni.
+            </p>
+          </div>
 
         </section>
 
