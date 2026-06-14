@@ -1151,6 +1151,135 @@ export default function DashboardPage() {
     );
   };
 
+  const calculateMatchPointsForPlayer = (match: any, playerName: string) => {
+    const matchId = Number(match.id);
+    const result = results[matchId];
+
+    const hasResult =
+      result !== undefined &&
+      result.homeScore !== "" &&
+      result.awayScore !== "";
+
+    if (!hasResult) return null;
+
+    const realHome = Number(result.homeScore);
+    const realAway = Number(result.awayScore);
+
+    if (Number.isNaN(realHome) || Number.isNaN(realAway)) return null;
+
+    const matchDate = getScoringMatchDate(match);
+    const isFinishedDay = isFullMatchDateFinished(matchDate, results);
+
+    const matchPredictions = allPredictions
+      .filter((prediction) => prediction.match_id === matchId)
+      .map((prediction) => {
+        const baseDistance = calculateDistance(
+          prediction.home_score,
+          prediction.away_score,
+          realHome,
+          realAway
+        );
+
+        const hasDoubleForThisMatch =
+          isFinishedDay &&
+          prediction.power_name === "Rozdwojenie Jaźni" &&
+          prediction.power_target_match_id === matchId &&
+          prediction.power_home_score !== null &&
+          prediction.power_home_score !== undefined &&
+          prediction.power_away_score !== null &&
+          prediction.power_away_score !== undefined;
+
+        if (!hasDoubleForThisMatch) {
+          return {
+            ...prediction,
+            effective_home_score: prediction.home_score,
+            effective_away_score: prediction.away_score,
+            distance: baseDistance,
+          };
+        }
+
+        const doubleDistance = calculateDistance(
+          Number(prediction.power_home_score),
+          Number(prediction.power_away_score),
+          realHome,
+          realAway
+        );
+
+        if (doubleDistance < baseDistance) {
+          return {
+            ...prediction,
+            effective_home_score: Number(prediction.power_home_score),
+            effective_away_score: Number(prediction.power_away_score),
+            distance: doubleDistance,
+          };
+        }
+
+        return {
+          ...prediction,
+          effective_home_score: prediction.home_score,
+          effective_away_score: prediction.away_score,
+          distance: baseDistance,
+        };
+      });
+
+    const playerPrediction = matchPredictions.find((prediction) =>
+      predictionMatchesPlayer(prediction, playerName)
+    );
+
+    if (!playerPrediction || matchPredictions.length === 0) return null;
+
+    let points = 0;
+
+    const exactHits = matchPredictions.filter(
+      (prediction) =>
+        prediction.effective_home_score === realHome &&
+        prediction.effective_away_score === realAway
+    );
+
+    const playerExactHit =
+      playerPrediction.effective_home_score === realHome &&
+      playerPrediction.effective_away_score === realAway;
+
+    if (exactHits.length === 1 && playerExactHit) {
+      points += 5;
+    } else if (exactHits.length > 1 && playerExactHit) {
+      points += 4;
+    } else if (exactHits.length === 0) {
+      const minDistance = Math.min(
+        ...matchPredictions.map((prediction) => prediction.distance)
+      );
+      const closest = matchPredictions.filter(
+        (prediction) => prediction.distance === minDistance
+      );
+      const playerClosest = closest.some((prediction) =>
+        predictionMatchesPlayer(prediction, playerName)
+      );
+
+      if (playerClosest) {
+        points += closest.length === 1 ? 2 : 1;
+      }
+    }
+
+    if (
+      isFinishedDay &&
+      playerPrediction.power_name === "Goleador" &&
+      playerPrediction.power_target_team
+    ) {
+      const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
+      const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
+
+      if (playerPrediction.power_target_team === resolvedHomeTeam) {
+        points += realHome;
+      }
+
+      if (playerPrediction.power_target_team === resolvedAwayTeam) {
+        points += realAway;
+      }
+    }
+
+    return points;
+  };
+
   const getAvailableTeamsForBracketSlot = (slotId: string) => {
     const selectedTeam = bracketSlots[slotId] || "";
 
@@ -2606,6 +2735,13 @@ export default function DashboardPage() {
                   const exactWithDoublePower =
                     Boolean(exact) && Boolean(hasDoubleForThisMatch);
 
+                  const matchPoints = arePredictionsVisible
+                    ? calculateMatchPointsForPlayer(match, player.name)
+                    : null;
+
+                  const pointsSuffix =
+                    prediction && matchPoints !== null ? ` (${matchPoints} pkt)` : "";
+
                   return (
                     <td
                       key={`types-cell-${match.id}-${player.name}`}
@@ -2632,7 +2768,7 @@ export default function DashboardPage() {
                       {!arePredictionsVisible
                         ? "Ukryte"
                         : prediction
-                          ? `${displayHomeScore}:${displayAwayScore}`
+                          ? `${displayHomeScore}:${displayAwayScore}${pointsSuffix}`
                           : "-"}
                     </td>
                   );
@@ -3008,7 +3144,7 @@ export default function DashboardPage() {
             {renderPredictionsResultsTable(predictionTableMatches, "430px")}
 
             <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
-              Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni.
+              Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni. Punkty w nawiasie są za konkretny mecz, bez mocy wieczornych i bez mnożnika Vabank.
             </p>
           </div>
 
