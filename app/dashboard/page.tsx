@@ -584,6 +584,27 @@ function getDailyPointsTableDates(matches: any[], now: Date) {
   };
 }
 
+function getPowerStatsRevealTime(matchDate: string) {
+  if (!matchDate || matchDate === "Brak daty") return null;
+
+  const revealAt = parseMatchDate(matchDate);
+
+  if (Number.isNaN(revealAt.getTime())) return null;
+
+  revealAt.setDate(revealAt.getDate() + 1);
+  revealAt.setHours(20, 0, 0, 0);
+
+  return revealAt;
+}
+
+function isPowerSettledForStats(matchDate: string, results: ResultsType, now: Date) {
+  const revealAt = getPowerStatsRevealTime(matchDate);
+
+  if (!revealAt || now < revealAt) return false;
+
+  return isFullMatchDateFinished(matchDate, results);
+}
+
 export default function DashboardPage() {
   const [userName, setUserName] = useState("");
   const testAdminEmails = ["damian@test.pl"];
@@ -1989,6 +2010,9 @@ export default function DashboardPage() {
         .forEach((prediction) => {
           const match = demoMatches.find((demoMatch) => demoMatch.id === prediction.match_id);
           const matchDate = match?.date || "Brak daty";
+
+          if (!isPowerSettledForStats(matchDate, results, now)) return;
+
           const powerName = String(prediction.power_name || "");
           const key = [
             "morning",
@@ -2036,6 +2060,9 @@ export default function DashboardPage() {
         .forEach((power) => {
           const powerName = String(power.power_name || "");
           const matchDate = power.match_date || "Brak daty";
+
+          if (!isPowerSettledForStats(matchDate, results, now)) return;
+
           const targetPlayer = getDailyPowerTargetPlayer(power);
           const key = [
             "evening",
@@ -2074,7 +2101,7 @@ export default function DashboardPage() {
         powers: powerDetails,
       };
     });
-  }, [allPredictions, allDailyPowers]);
+  }, [allPredictions, allDailyPowers, results, now]);
 
   const selectedPowerStats = useMemo(() => {
     if (!selectedPowerStatsPlayer) return null;
@@ -4768,6 +4795,9 @@ export default function DashboardPage() {
 
             <div className="result-card">
               <strong>🟣 Użyte moce</strong>
+              <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                Moce pojawią się tutaj dopiero po rozliczeniu danego dnia meczowego o 20:00.
+              </p>
 
               <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
                 {powerStats.map((player) => (
