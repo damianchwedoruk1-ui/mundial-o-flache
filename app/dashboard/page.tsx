@@ -560,6 +560,7 @@ export default function DashboardPage() {
   const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
   const [isFinalPodiumOpen, setIsFinalPodiumOpen] = useState(false);
   const [isDailyPointsOpen, setIsDailyPointsOpen] = useState(false);
+  const [selectedPowerStatsPlayer, setSelectedPowerStatsPlayer] = useState<string | null>(null);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
   const router = useRouter();
@@ -1883,22 +1884,115 @@ export default function DashboardPage() {
 
   const powerStats = useMemo(() => {
     return players.map((player) => {
-      const playerPredictions = allPredictions.filter((p) =>
-        predictionMatchesPlayer(p, player.name)
-      );
+      const powerDetails: {
+        key: string;
+        name: string;
+        time: string;
+        matchDate: string;
+        description: string;
+      }[] = [];
 
-      const uniquePowers = new Set(
-        playerPredictions
-          .map((prediction) => prediction.power_name)
-          .filter(Boolean)
-      );
+      const seenPowers = new Set<string>();
+
+      allPredictions
+        .filter((prediction) =>
+          predictionMatchesPlayer(prediction, player.name) && Boolean(prediction.power_name)
+        )
+        .forEach((prediction) => {
+          const match = demoMatches.find((demoMatch) => demoMatch.id === prediction.match_id);
+          const matchDate = match?.date || "Brak daty";
+          const powerName = String(prediction.power_name || "");
+          const key = [
+            "morning",
+            player.name,
+            powerName,
+            matchDate,
+            prediction.power_target_match_id || "",
+            prediction.power_target_team || "",
+          ].join("|");
+
+          if (seenPowers.has(key)) return;
+          seenPowers.add(key);
+
+          let description = "Moc poranna";
+
+          if (isPower(powerName, "Goleador") && prediction.power_target_team) {
+            description = `Wybrana drużyna: ${prediction.power_target_team}`;
+          }
+
+          if (isPower(powerName, "Rozdwojenie Jaźni") && prediction.power_target_match_id) {
+            const targetMatch = demoMatches.find(
+              (demoMatch) => demoMatch.id === prediction.power_target_match_id
+            );
+
+            description = targetMatch
+              ? `${targetMatch.teamA} - ${targetMatch.teamB}: ${prediction.power_home_score}:${prediction.power_away_score}`
+              : `Drugi typ: ${prediction.power_home_score}:${prediction.power_away_score}`;
+          }
+
+          if (isPower(powerName, "Vabank")) {
+            description = "Punkty dnia x2, przy 0 pkt kara -4";
+          }
+
+          powerDetails.push({
+            key,
+            name: powerName,
+            time: "Poranna",
+            matchDate,
+            description,
+          });
+        });
+
+      allDailyPowers
+        .filter((power) => predictionMatchesPlayer(power, player.name))
+        .forEach((power) => {
+          const powerName = String(power.power_name || "");
+          const matchDate = power.match_date || "Brak daty";
+          const targetPlayer = getDailyPowerTargetPlayer(power);
+          const key = [
+            "evening",
+            player.name,
+            powerName,
+            normalizeMatchDateKey(matchDate),
+            targetPlayer || "",
+            power.created_at || "",
+          ].join("|");
+
+          if (seenPowers.has(key)) return;
+          seenPowers.add(key);
+
+          powerDetails.push({
+            key,
+            name: powerName,
+            time: "Wieczorna",
+            matchDate,
+            description: targetPlayer ? `Cel: ${targetPlayer}` : "Bez wybranego celu",
+          });
+        });
+
+      powerDetails.sort((a, b) => {
+        const dateDiff = normalizeMatchDateKey(a.matchDate).localeCompare(
+          normalizeMatchDateKey(b.matchDate)
+        );
+
+        if (dateDiff !== 0) return dateDiff;
+
+        return a.name.localeCompare(b.name);
+      });
 
       return {
         name: player.name,
-        usedPowers: uniquePowers.size,
+        usedPowers: powerDetails.length,
+        powers: powerDetails,
       };
     });
-  }, [allPredictions]);
+  }, [allPredictions, allDailyPowers]);
+
+  const selectedPowerStats = useMemo(() => {
+    if (!selectedPowerStatsPlayer) return null;
+
+    return powerStats.find((player) => player.name === selectedPowerStatsPlayer) || null;
+  }, [powerStats, selectedPowerStatsPlayer]);
 
   const bestRound = useMemo(() => {
     const rounds = standings.flatMap((player) =>
@@ -4501,10 +4595,40 @@ export default function DashboardPage() {
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
+                      alignItems: "center",
                       gap: "12px",
                     }}
                   >
-                    <span>{player.name}</span>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "7px",
+                      }}
+                    >
+                      {player.name}
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPowerStatsPlayer(player.name)}
+                        aria-label={`Pokaż moce gracza ${player.name}`}
+                        title={`Pokaż moce gracza ${player.name}`}
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          borderRadius: "999px",
+                          border: "1px solid rgba(168, 85, 247, 0.75)",
+                          background: "rgba(168, 85, 247, 0.18)",
+                          color: "#f5f3ff",
+                          fontWeight: 900,
+                          cursor: "pointer",
+                          lineHeight: 1,
+                        }}
+                      >
+                        ?
+                      </button>
+                    </span>
+
                     <strong>{player.usedPowers}</strong>
                   </div>
                 ))}
@@ -4516,6 +4640,127 @@ export default function DashboardPage() {
         </>
       )}
 
+
+      {selectedPowerStats && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            padding: "clamp(12px, 3vw, 28px)",
+            background: "rgba(2, 6, 23, 0.82)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setSelectedPowerStatsPlayer(null)}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(560px, 100%)",
+              maxHeight: "86vh",
+              overflowY: "auto",
+              borderRadius: "24px",
+              border: "1px solid rgba(168, 85, 247, 0.35)",
+              background: "linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96))",
+              boxShadow: "0 30px 90px rgba(0,0,0,.55)",
+              padding: "clamp(16px, 3vw, 24px)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "14px",
+                marginBottom: "16px",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: "22px" }}>
+                  🟣 Moce gracza: {selectedPowerStats.name}
+                </h2>
+                <p className="muted" style={{ margin: "6px 0 0", fontSize: "13px" }}>
+                  Łącznie użyte: <strong>{selectedPowerStats.usedPowers}</strong>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedPowerStatsPlayer(null)}
+                aria-label="Zamknij okno mocy"
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(148, 163, 184, 0.25)",
+                  background: "rgba(15, 23, 42, 0.85)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "20px",
+                  fontWeight: 900,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {selectedPowerStats.powers.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Ten gracz nie użył jeszcze żadnej mocy.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gap: "10px" }}>
+                {selectedPowerStats.powers.map((power) => (
+                  <div
+                    key={power.key}
+                    className="result-card"
+                    style={{
+                      display: "grid",
+                      gap: "6px",
+                      borderColor: "rgba(168, 85, 247, 0.28)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <strong>{power.name}</strong>
+                      <span
+                        style={{
+                          border: "1px solid rgba(148, 163, 184, 0.24)",
+                          borderRadius: "999px",
+                          padding: "3px 8px",
+                          fontSize: "12px",
+                          color: "#c4b5fd",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {power.time}
+                      </span>
+                    </div>
+
+                    <span className="muted" style={{ fontSize: "13px" }}>
+                      Dzień: {power.matchDate}
+                    </span>
+
+                    <span style={{ fontSize: "14px" }}>{power.description}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {isPredictionsTableOpen && (
         <div
