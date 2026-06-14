@@ -1018,6 +1018,40 @@ export default function DashboardPage() {
 
   const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
 
+  const hasPlayerSubmittedFullMatchDate = (playerName: string, matchDate: string) => {
+    const matchesForDate = demoMatches.filter((match) => match.date === matchDate);
+
+    if (matchesForDate.length === 0) return false;
+
+    return matchesForDate.every((match) =>
+      allPredictions.some(
+        (prediction) =>
+          prediction.match_id === match.id &&
+          predictionMatchesPlayer(prediction, playerName)
+      )
+    );
+  };
+
+  const isPredictionTableMatchRevealed = (match: any) => {
+    const matchDate = String(match?.date || "");
+
+    if (!matchDate) return true;
+
+    const allSubmittedForDate = players.every((player) =>
+      hasPlayerSubmittedFullMatchDate(player.name, matchDate)
+    );
+
+    if (allSubmittedForDate) return true;
+
+    const isNormalMatchDate = /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(matchDate);
+
+    if (!isNormalMatchDate) return false;
+
+    const { closesAt } = getBettingWindow(matchDate);
+
+    return now > closesAt;
+  };
+
   const bracketPredictionTableMatches = useMemo(() => {
     const firstRound = knockoutFirstRoundMatches.map((match) => ({
       id: Number(match.id.replace("M", "")),
@@ -2480,6 +2514,7 @@ export default function DashboardPage() {
             const matchId = Number(match.id);
             const realResult = results[matchId];
             const displayMatch = resolvePredictionTableMatch(match);
+            const arePredictionsVisible = isPredictionTableMatchRevealed(match);
 
             return (
               <tr key={`types-row-${match.id}`}>
@@ -2513,11 +2548,13 @@ export default function DashboardPage() {
                 </td>
 
                 {players.map((player) => {
-                  const prediction = allPredictions.find(
-                    (item) =>
-                      item.match_id === matchId &&
-                      predictionMatchesPlayer(item, player.name)
-                  );
+                  const prediction = arePredictionsVisible
+                    ? allPredictions.find(
+                        (item) =>
+                          item.match_id === matchId &&
+                          predictionMatchesPlayer(item, player.name)
+                      )
+                    : undefined;
 
                   const hasResult =
                     realResult?.homeScore !== "" &&
@@ -2576,13 +2613,15 @@ export default function DashboardPage() {
                         padding: "10px",
                         borderTop: "1px solid rgba(148, 163, 184, 0.12)",
                         textAlign: "center",
-                        color: prediction
-                          ? exact
-                            ? exactWithDoublePower
-                              ? "#c084fc"
-                              : "#4ade80"
-                            : "#e5e7eb"
-                          : "#64748b",
+                        color: !arePredictionsVisible
+                          ? "#94a3b8"
+                          : prediction
+                            ? exact
+                              ? exactWithDoublePower
+                                ? "#c084fc"
+                                : "#4ade80"
+                              : "#e5e7eb"
+                            : "#64748b",
                         background:
                           prediction && exactWithDoublePower
                             ? "rgba(168, 85, 247, 0.16)"
@@ -2590,9 +2629,11 @@ export default function DashboardPage() {
                         fontWeight: prediction ? 950 : 700,
                       }}
                     >
-                      {prediction
-                        ? `${displayHomeScore}:${displayAwayScore}`
-                        : "-"}
+                      {!arePredictionsVisible
+                        ? "Ukryte"
+                        : prediction
+                          ? `${displayHomeScore}:${displayAwayScore}`
+                          : "-"}
                     </td>
                   );
                 })}
@@ -2950,7 +2991,7 @@ export default function DashboardPage() {
                   👁️ Typy graczy i wyniki
                 </h3>
                 <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
-                  Widoczne cały czas: wczorajszy i dzisiejszy dzień meczowy.
+                  Tabela widoczna cały czas, ale typy są ukryte do kompletu graczy albo zamknięcia typowania.
                 </p>
               </div>
 
