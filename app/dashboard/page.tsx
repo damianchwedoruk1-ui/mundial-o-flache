@@ -1900,7 +1900,24 @@ export default function DashboardPage() {
     });
   }, [allPredictions]);
 
-  const bestRound = sortedStandings[0];
+  const bestRound = useMemo(() => {
+    const rounds = standings.flatMap((player) =>
+      Object.entries(player.daily_points || {}).map(([matchDate, points]) => ({
+        name: player.name,
+        matchDate,
+        points: Number(points) || 0,
+      }))
+    );
+
+    if (rounds.length === 0) return null;
+
+    return rounds.sort(
+      (a, b) =>
+        b.points - a.points ||
+        getMatchDateTime(a.matchDate) - getMatchDateTime(b.matchDate) ||
+        a.name.localeCompare(b.name)
+    )[0];
+  }, [standings]);
 
   const handlePredictionChange = (
     matchId: number,
@@ -4463,6 +4480,8 @@ export default function DashboardPage() {
                 {bestRound ? (
                   <>
                     <span>{bestRound.name}</span>
+                    <br />
+                    <span className="muted">{bestRound.matchDate}</span>
                     <br />
                     <strong>{bestRound.points} pkt</strong>
                   </>
