@@ -516,6 +516,74 @@ function isFullMatchDateFinished(matchDate: string, results: ResultsType) {
   });
 }
 
+function getSortedMatchDates(matches: any[]) {
+  return Array.from(
+    new Set(matches.map((match) => match.date).filter(Boolean))
+  ).sort((a, b) => getMatchDateTime(a) - getMatchDateTime(b));
+}
+
+function formatMatchDateKeyFromDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}.${month}.${year}`;
+}
+
+function getDailyPointsTableDates(matches: any[], now: Date) {
+  const dates = getSortedMatchDates(matches);
+
+  if (dates.length === 0) {
+    return { settlementDate: "", liveDate: "" };
+  }
+
+  const todayKey = formatMatchDateKeyFromDate(now);
+  const todayIndex = dates.findIndex((date) => isSameMatchDate(date, todayKey));
+  const afterEveningSettlement = now.getHours() >= 20;
+
+  if (todayIndex >= 0) {
+    if (afterEveningSettlement) {
+      return {
+        settlementDate: dates[todayIndex] || "",
+        liveDate: dates[todayIndex + 1] || "",
+      };
+    }
+
+    return {
+      settlementDate: dates[todayIndex - 1] || "",
+      liveDate: dates[todayIndex] || "",
+    };
+  }
+
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const latestPastIndex = dates.reduce((lastIndex, date, index) => {
+    return parseMatchDate(date).getTime() <= todayStart.getTime()
+      ? index
+      : lastIndex;
+  }, -1);
+
+  if (latestPastIndex < 0) {
+    return {
+      settlementDate: "",
+      liveDate: dates[0] || "",
+    };
+  }
+
+  if (afterEveningSettlement) {
+    return {
+      settlementDate: dates[latestPastIndex] || "",
+      liveDate: dates[latestPastIndex + 1] || "",
+    };
+  }
+
+  return {
+    settlementDate: dates[latestPastIndex - 1] || "",
+    liveDate: dates[latestPastIndex] || "",
+  };
+}
+
 export default function DashboardPage() {
   const [userName, setUserName] = useState("");
   const testAdminEmails = ["damian@test.pl"];
@@ -560,6 +628,7 @@ export default function DashboardPage() {
   const [isPredictionsTableOpen, setIsPredictionsTableOpen] = useState(false);
   const [isFinalPodiumOpen, setIsFinalPodiumOpen] = useState(false);
   const [isDailyPointsOpen, setIsDailyPointsOpen] = useState(false);
+  const [isLiveDailyPointsOpen, setIsLiveDailyPointsOpen] = useState(false);
   const [selectedPowerStatsPlayer, setSelectedPowerStatsPlayer] = useState<string | null>(null);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
@@ -1854,10 +1923,14 @@ export default function DashboardPage() {
     );
   }, [standings]);
 
-  const dailyPointsDate = eveningSettlementDate || previousMatchDate || currentMatchDate;
+  const dailyPointsTableDates = getDailyPointsTableDates(demoMatches, now);
+  const settlementDailyPointsDate =
+    dailyPointsTableDates.settlementDate || previousMatchDate || currentMatchDate;
+  const liveDailyPointsDate =
+    dailyPointsTableDates.liveDate || currentMatchDate || previousMatchDate;
 
-  const dailyPointsRows = useMemo(() => {
-    if (!dailyPointsDate) return [];
+  const settlementDailyPointsRows = useMemo(() => {
+    if (!settlementDailyPointsDate) return [];
 
     return players
       .map((player) => {
@@ -1865,11 +1938,26 @@ export default function DashboardPage() {
 
         return {
           name: player.name,
-          points: standingRow?.daily_points?.[dailyPointsDate] || 0,
+          points: standingRow?.daily_points?.[settlementDailyPointsDate] || 0,
         };
       })
       .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
-  }, [standings, dailyPointsDate]);
+  }, [standings, settlementDailyPointsDate]);
+
+  const liveDailyPointsRows = useMemo(() => {
+    if (!liveDailyPointsDate) return [];
+
+    return players
+      .map((player) => {
+        const standingRow = standings.find((row) => row.name === player.name);
+
+        return {
+          name: player.name,
+          points: standingRow?.daily_points?.[liveDailyPointsDate] || 0,
+        };
+      })
+      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  }, [standings, liveDailyPointsDate]);
 
   const exactStats = useMemo(() => {
     return players.map((player) => {
@@ -3184,49 +3272,117 @@ export default function DashboardPage() {
               marginTop: "16px",
               paddingTop: "14px",
               borderTop: "1px solid rgba(148, 163, 184, 0.18)",
+              display: "grid",
+              gap: "12px",
             }}
           >
-            <div className="panel-header" style={{ marginBottom: isDailyPointsOpen ? "10px" : 0 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "18px" }}>📅 Punkty dnia</h3>
-                <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
-                  {dailyPointsDate
-                    ? `Dzień meczowy: ${dailyPointsDate}`
-                    : "Brak dnia do rozliczenia"}
-                </p>
+            <div
+              style={{
+                border: "1px solid rgba(148, 163, 184, 0.16)",
+                borderRadius: "16px",
+                padding: "12px",
+                background: "rgba(15, 23, 42, 0.38)",
+              }}
+            >
+              <div className="panel-header" style={{ marginBottom: isDailyPointsOpen ? "10px" : 0 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "18px" }}>
+                    🌙 Punkty dnia do rozliczenia
+                  </h3>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                    {settlementDailyPointsDate
+                      ? now.getHours() < 20
+                        ? `Dzień meczowy: ${settlementDailyPointsDate} — można dodawać moce wieczorne do 20:00`
+                        : `Dzień meczowy: ${settlementDailyPointsDate} — dzień po rozliczeniu mocy wieczornych`
+                      : "Brak dnia do rozliczenia"}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setIsDailyPointsOpen((prev) => !prev)}
+                  style={{ padding: "9px 12px", fontSize: "13px" }}
+                >
+                  {isDailyPointsOpen ? "Ukryj" : "Pokaż"}
+                </button>
               </div>
 
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setIsDailyPointsOpen((prev) => !prev)}
-                style={{ padding: "9px 12px", fontSize: "13px" }}
-              >
-                {isDailyPointsOpen ? "Ukryj" : "Pokaż"}
-              </button>
+              {isDailyPointsOpen && (
+                <div style={{ display: "grid", gap: "8px" }}>
+                  {settlementDailyPointsRows.map((row, index) => (
+                    <div
+                      key={row.name}
+                      className="standing-row"
+                      style={{ gridTemplateColumns: "42px 1fr auto" }}
+                    >
+                      <div className={`place ${index === 0 ? "first" : ""}`}>
+                        {index + 1}
+                      </div>
+                      <strong>{row.name}</strong>
+                      <span className="points">{row.points} pkt</span>
+                    </div>
+                  ))}
+
+                  <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                    To jest tabela do mocy wieczornych. Słabiak, Zamianka i Złodziej patrzą na punkty tego dnia.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {isDailyPointsOpen && (
-              <div style={{ display: "grid", gap: "8px" }}>
-                {dailyPointsRows.map((row, index) => (
-                  <div
-                    key={row.name}
-                    className="standing-row"
-                    style={{ gridTemplateColumns: "42px 1fr auto" }}
-                  >
-                    <div className={`place ${index === 0 ? "first" : ""}`}>
-                      {index + 1}
-                    </div>
-                    <strong>{row.name}</strong>
-                    <span className="points">{row.points} pkt</span>
-                  </div>
-                ))}
+            <div
+              style={{
+                border: "1px solid rgba(148, 163, 184, 0.16)",
+                borderRadius: "16px",
+                padding: "12px",
+                background: "rgba(15, 23, 42, 0.38)",
+              }}
+            >
+              <div className="panel-header" style={{ marginBottom: isLiveDailyPointsOpen ? "10px" : 0 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "18px" }}>
+                    📅 Punkty bieżących wyników
+                  </h3>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                    {liveDailyPointsDate
+                      ? `Dzień meczowy: ${liveDailyPointsDate} — tutaj wpadają punkty z wpisywanych teraz wyników`
+                      : "Brak kolejnego dnia meczowego"}
+                  </p>
+                </div>
 
-                <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
-                  Tu patrzycie przy mocach wieczornych: Słabiak, Zamianka i Złodziej bazują na punktach tego dnia.
-                </p>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setIsLiveDailyPointsOpen((prev) => !prev)}
+                  style={{ padding: "9px 12px", fontSize: "13px" }}
+                >
+                  {isLiveDailyPointsOpen ? "Ukryj" : "Pokaż"}
+                </button>
               </div>
-            )}
+
+              {isLiveDailyPointsOpen && (
+                <div style={{ display: "grid", gap: "8px" }}>
+                  {liveDailyPointsRows.map((row, index) => (
+                    <div
+                      key={row.name}
+                      className="standing-row"
+                      style={{ gridTemplateColumns: "42px 1fr auto" }}
+                    >
+                      <div className={`place ${index === 0 ? "first" : ""}`}>
+                        {index + 1}
+                      </div>
+                      <strong>{row.name}</strong>
+                      <span className="points">{row.points} pkt</span>
+                    </div>
+                  ))}
+
+                  <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                    To jest osobna tabela dla bieżących wyników, żeby nie mieszały się z dniem rozliczanym mocami wieczornymi.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div
