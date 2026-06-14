@@ -2609,7 +2609,7 @@ export default function DashboardPage() {
       <table
         style={{
           width: "100%",
-          minWidth: "620px",
+          minWidth: "980px",
           borderCollapse: "collapse",
           fontSize: "13px",
         }}
@@ -2625,12 +2625,12 @@ export default function DashboardPage() {
               zIndex: 2,
             }}
           >
-            <th style={{ padding: "10px" }}>Mecz</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Wynik</th>
+            <th style={{ padding: "10px", minWidth: "300px", whiteSpace: "nowrap" }}>Mecz</th>
+            <th style={{ padding: "10px", minWidth: "82px", textAlign: "center", whiteSpace: "nowrap" }}>Wynik</th>
             {players.map((player) => (
               <th
                 key={`type-head-${player.name}`}
-                style={{ padding: "10px", textAlign: "center" }}
+                style={{ padding: "10px", minWidth: "130px", textAlign: "center", whiteSpace: "nowrap" }}
               >
                 {player.name}
               </th>
@@ -2666,6 +2666,8 @@ export default function DashboardPage() {
                   style={{
                     padding: "10px",
                     borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                    minWidth: "82px",
+                    whiteSpace: "nowrap",
                     textAlign: "center",
                     color: "#fde68a",
                     fontWeight: 950,
@@ -2748,6 +2750,8 @@ export default function DashboardPage() {
                       style={{
                         padding: "10px",
                         borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                        minWidth: "130px",
+                        whiteSpace: "nowrap",
                         textAlign: "center",
                         color: !arePredictionsVisible
                           ? "#94a3b8"
