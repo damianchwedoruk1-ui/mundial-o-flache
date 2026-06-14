@@ -2808,7 +2808,7 @@ export default function DashboardPage() {
       <table
         style={{
           width: "100%",
-          minWidth: "980px",
+          minWidth: "760px",
           borderCollapse: "collapse",
           fontSize: "13px",
         }}
@@ -2824,12 +2824,12 @@ export default function DashboardPage() {
               zIndex: 2,
             }}
           >
-            <th style={{ padding: "10px", minWidth: "300px", whiteSpace: "nowrap" }}>Mecz</th>
-            <th style={{ padding: "10px", minWidth: "82px", textAlign: "center", whiteSpace: "nowrap" }}>Wynik</th>
+            <th style={{ padding: "10px", minWidth: "230px", whiteSpace: "nowrap" }}>Mecz</th>
+            <th style={{ padding: "10px", minWidth: "70px", textAlign: "center", whiteSpace: "nowrap" }}>Wynik</th>
             {players.map((player) => (
               <th
                 key={`type-head-${player.name}`}
-                style={{ padding: "10px", minWidth: "130px", textAlign: "center", whiteSpace: "nowrap" }}
+                style={{ padding: "10px", minWidth: "90px", textAlign: "center", whiteSpace: "nowrap" }}
               >
                 {player.name}
               </th>
@@ -2865,7 +2865,7 @@ export default function DashboardPage() {
                   style={{
                     padding: "10px",
                     borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                    minWidth: "82px",
+                    minWidth: "70px",
                     whiteSpace: "nowrap",
                     textAlign: "center",
                     color: "#fde68a",
@@ -2940,8 +2940,8 @@ export default function DashboardPage() {
                     ? calculateMatchPointsForPlayer(match, player.name)
                     : null;
 
-                  const pointsSuffix =
-                    prediction && matchPoints !== null ? ` (${matchPoints} pkt)` : "";
+                  const pointsLine =
+                    prediction && matchPoints !== null ? `(${matchPoints} pkt)` : "";
 
                   return (
                     <td
@@ -2949,9 +2949,10 @@ export default function DashboardPage() {
                       style={{
                         padding: "10px",
                         borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                        minWidth: "130px",
-                        whiteSpace: "nowrap",
+                        minWidth: "90px",
+                        whiteSpace: "normal",
                         textAlign: "center",
+                        lineHeight: 1.15,
                         color: !arePredictionsVisible
                           ? "#94a3b8"
                           : prediction
@@ -2968,11 +2969,35 @@ export default function DashboardPage() {
                         fontWeight: prediction ? 950 : 700,
                       }}
                     >
-                      {!arePredictionsVisible
-                        ? "Ukryte"
-                        : prediction
-                          ? `${displayHomeScore}:${displayAwayScore}${pointsSuffix}`
-                          : "-"}
+                      {!arePredictionsVisible ? (
+                        "Ukryte"
+                      ) : prediction ? (
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: "2px",
+                            justifyItems: "center",
+                          }}
+                        >
+                          <span style={{ whiteSpace: "nowrap" }}>
+                            {displayHomeScore}:{displayAwayScore}
+                          </span>
+                          {pointsLine ? (
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                color: exact ? "inherit" : "#94a3b8",
+                                fontWeight: 800,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {pointsLine}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   );
                 })}
