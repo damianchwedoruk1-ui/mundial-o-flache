@@ -641,6 +641,7 @@ export default function DashboardPage() {
   const [selectedEveningPower, setSelectedEveningPower] = useState<string | null>(null);
   const [savedEveningPower, setSavedEveningPower] = useState<string | null>(null);
   const [selectedEveningTargetPlayer, setSelectedEveningTargetPlayer] = useState("");
+  const [savedEveningTargetPlayer, setSavedEveningTargetPlayer] = useState("");
   const [allDailyPowers, setAllDailyPowers] = useState<DailyPowerType[]>([]);
   const [isEditingPredictions, setIsEditingPredictions] = useState(true);
   const [powerTab, setPowerTab] = useState<"morning" | "evening">("morning");
@@ -1003,7 +1004,9 @@ export default function DashboardPage() {
 
         if (eveningForPreviousDay) {
           setSavedEveningPower(eveningForPreviousDay.power_name);
+          setSelectedEveningPower(eveningForPreviousDay.power_name);
           setSelectedEveningTargetPlayer(eveningForPreviousDay.target_player || "");
+          setSavedEveningTargetPlayer(eveningForPreviousDay.target_player || "");
         }
       }
 
@@ -2327,28 +2330,36 @@ export default function DashboardPage() {
   };
 
   const togglePower = (powerName: string) => {
-    if (usedPowerNames.has(powerName)) {
-      alert("Ta moc została już wykorzystana w turnieju i nie można użyć jej ponownie.");
-      return;
-    }
-
     if (powerTab === "evening") {
       if (!isEveningPowerWindow) {
         alert("Moce wieczorne można wybrać tylko w oknie 12:00–20:00.");
         return;
       }
 
-      if (savedEveningPower) {
-        alert("Użyłeś już mocy wieczornej dla tego dnia.");
+      const isCurrentSavedEveningPower = Boolean(savedEveningPower) && isPower(savedEveningPower, powerName);
+      const wasPowerUsedEarlier = usedPowerNames.has(powerName) && !isCurrentSavedEveningPower;
+
+      if (wasPowerUsedEarlier) {
+        alert("Ta moc została już wykorzystana w turnieju i nie można użyć jej ponownie.");
         return;
       }
 
-      if (hasUsedEveningPowerForPreviousDay) {
-        alert("Użyłeś już mocy wieczornej dla poprzedniego dnia meczowego.");
-        return;
-      }
+      setSelectedEveningPower((prev) => {
+        const next = prev && isPower(prev, powerName) ? null : powerName;
 
-      setSelectedEveningPower((prev) => (prev === powerName ? null : powerName));
+        if (isCurrentSavedEveningPower) {
+          setSelectedEveningTargetPlayer(savedEveningTargetPlayer || "");
+        } else if (!isPower(next, "Zamianka") && !isPower(next, "Złodziej")) {
+          setSelectedEveningTargetPlayer("");
+        }
+
+        return next;
+      });
+      return;
+    }
+
+    if (usedPowerNames.has(powerName)) {
+      alert("Ta moc została już wykorzystana w turnieju i nie można użyć jej ponownie.");
       return;
     }
 
@@ -2637,10 +2648,7 @@ export default function DashboardPage() {
       return;
     }
 
-    if (savedEveningPower || hasUsedEveningPowerForPreviousDay) {
-      alert("Użyłeś już mocy wieczornej dla tego dnia.");
-      return;
-    }
+    const isChangingEveningPower = Boolean(savedEveningPower || hasUsedEveningPowerForPreviousDay);
 
     if (!selectedEveningPower) {
       alert("Wybierz moc wieczorną.");
@@ -2663,16 +2671,31 @@ export default function DashboardPage() {
 
     if (!activeUser) return;
 
+    const finalEveningTarget =
+      selectedEveningPower === "Zamianka" || selectedEveningPower === "Złodziej"
+        ? selectedEveningTargetPlayer
+        : "";
+
+    const { error: deleteExistingPowerError } = await supabase
+      .from("daily_powers")
+      .delete()
+      .eq("user_id", activeUser.id)
+      .eq("match_date", eveningSettlementDate)
+      .eq("power_time", "evening");
+
+    if (deleteExistingPowerError) {
+      console.error(deleteExistingPowerError);
+      alert("Błąd usuwania poprzedniej mocy wieczornej: " + deleteExistingPowerError.message);
+      return;
+    }
+
     const { error } = await supabase.from("daily_powers").insert({
       user_id: activeUser.id,
       user_email: activeUser.email,
       match_date: eveningSettlementDate,
       power_name: selectedEveningPower,
       power_time: "evening",
-      target_player:
-        selectedEveningPower === "Zamianka" || selectedEveningPower === "Złodziej"
-          ? selectedEveningTargetPlayer
-          : null,
+      target_player: finalEveningTarget || null,
     });
 
     if (error) {
@@ -2682,11 +2705,13 @@ export default function DashboardPage() {
     }
 
     setSavedEveningPower(selectedEveningPower);
-    setSelectedEveningPower(null);
+    setSavedEveningTargetPlayer(finalEveningTarget);
+    setSelectedEveningPower(selectedEveningPower);
+    setSelectedEveningTargetPlayer(finalEveningTarget);
 
     await loadAllDailyPowers();
 
-    alert("Moc wieczorna zaakceptowana. Użyj jej mądrze 😄");
+    alert(isChangingEveningPower ? "Moc wieczorna zmieniona. Możesz ją zmieniać do 20:00." : "Moc wieczorna zaakceptowana. Możesz ją zmienić do 20:00.");
   };
 
   const resetEverythingForTests = async () => {
@@ -2749,6 +2774,7 @@ export default function DashboardPage() {
     setSelectedEveningPower(null);
     setSavedEveningPower(null);
     setSelectedEveningTargetPlayer("");
+    setSavedEveningTargetPlayer("");
     setAllDailyPowers([]);
     setPodiumPrediction({
       firstPlace: "",
@@ -3063,6 +3089,92 @@ export default function DashboardPage() {
       </table>
     </div>
   );
+
+  const getPowerCardUsedNote = (powerName: string) => {
+    const isEveningPower = getPowerTime(powerName) === "evening";
+
+    if (isEveningPower) {
+      const savedPowerRow = [...allDailyPowers]
+        .reverse()
+        .find(
+          (power) =>
+            Boolean(userName) &&
+            predictionBelongsToPlayer(power.user_name, userName) &&
+            isPower(power.power_name, powerName)
+        );
+
+      const targetPlayer =
+        savedPowerRow?.target_player ||
+        (savedEveningPower && isPower(savedEveningPower, powerName)
+          ? savedEveningTargetPlayer
+          : "");
+
+      if (isPower(powerName, "Zamianka") || isPower(powerName, "Złodziej")) {
+        return targetPlayer
+          ? `Użyta przeciwko: ${targetPlayer}`
+          : "Użyta przeciwko: nie zapisano celu";
+      }
+
+      if (isPower(powerName, "Słabiak") || isPower(powerName, "Slabiak")) {
+        return "Użyta na wszystkich graczy";
+      }
+
+      if (isPower(powerName, "Blokada")) {
+        return "Użyta na sobie";
+      }
+
+      return savedPowerRow?.match_date
+        ? `Użyta na dzień: ${savedPowerRow.match_date}`
+        : "Moc wykorzystana";
+    }
+
+    const savedPredictionPower = [...allPredictions]
+      .reverse()
+      .find(
+        (prediction) =>
+          Boolean(userName) &&
+          predictionBelongsToPlayer(prediction.user_name, userName) &&
+          prediction.power_name &&
+          isPower(prediction.power_name, powerName)
+      );
+
+    if (isPower(powerName, "Goleador")) {
+      const team =
+        savedPredictionPower?.power_target_team ||
+        (savedPower && isPower(savedPower, powerName) ? selectedGoleadorTeam : "");
+
+      return team ? `Wybrana drużyna: ${team}` : "Moc wykorzystana";
+    }
+
+    if (isPower(powerName, "Rozdwojenie Jaźni")) {
+      const matchId =
+        savedPredictionPower?.power_target_match_id ||
+        Number(doublePrediction.matchId || 0);
+      const match = demoMatches.find((item) => Number(item.id) === Number(matchId));
+      const homeScore =
+        savedPredictionPower?.power_home_score ??
+        (doublePrediction.homeScore !== "" ? Number(doublePrediction.homeScore) : null);
+      const awayScore =
+        savedPredictionPower?.power_away_score ??
+        (doublePrediction.awayScore !== "" ? Number(doublePrediction.awayScore) : null);
+
+      if (match && homeScore !== null && awayScore !== null) {
+        return `Drugi typ: ${getResolvedMatchTeam(match, "home")} - ${getResolvedMatchTeam(match, "away")} ${homeScore}:${awayScore}`;
+      }
+
+      if (match) {
+        return `Drugi typ: ${getResolvedMatchTeam(match, "home")} - ${getResolvedMatchTeam(match, "away")}`;
+      }
+
+      return "Drugi typ zapisany";
+    }
+
+    if (isPower(powerName, "Vabank")) {
+      return "Użyta na ten dzień meczowy";
+    }
+
+    return "Moc wykorzystana";
+  };
 
   return (
     <main className="page">
@@ -4611,6 +4723,13 @@ export default function DashboardPage() {
                 }
                 onClick={() => togglePower(power.name)}
                 hideAction={powerTab === "evening"}
+                canEditUsed={
+                  powerTab === "evening" &&
+                  isEveningPowerWindow &&
+                  Boolean(savedEveningPower) &&
+                  isPower(savedEveningPower, power.name)
+                }
+                usedNote={getPowerCardUsedNote(power.name)}
               />
             ))}
           </div>
@@ -4685,14 +4804,36 @@ export default function DashboardPage() {
                 Użyj jej mądrze, bo tego samego dnia nie wybierzesz drugiej.
               </p>
 
-              {savedEveningPower || hasUsedEveningPowerForPreviousDay ? (
-                <p style={{ marginTop: "12px", marginBottom: 0 }}>
-                  ✅ Moc wieczorna zaakceptowana:{" "}
-                  <strong>{savedEveningPower || "zapisana"}</strong>
-                </p>
-              ) : (
+              {(savedEveningPower || hasUsedEveningPowerForPreviousDay) && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "12px",
+                    borderRadius: "14px",
+                    background: "rgba(15, 23, 42, 0.62)",
+                    border: "1px solid rgba(96, 165, 250, 0.30)",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    ✅ Moc wieczorna zaakceptowana:{" "}
+                    <strong>{savedEveningPower || "zapisana"}</strong>
+                    {savedEveningTargetPlayer ? (
+                      <>
+                        {" "}→ <strong>{savedEveningTargetPlayer}</strong>
+                      </>
+                    ) : null}
+                  </p>
+                  {isEveningPowerWindow && (
+                    <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                      Do 20:00 możesz kliknąć inną kartę albo zmienić cel i zapisać zmianę.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {isEveningPowerWindow ? (
                 <>
-              {(selectedEveningPower === "Zamianka" || selectedEveningPower === "Złodziej") && (
+                  {(selectedEveningPower === "Zamianka" || selectedEveningPower === "Złodziej") && (
                     <div style={{ marginTop: "14px" }}>
                       <strong>
                         {selectedEveningPower === "Zamianka"
@@ -4727,38 +4868,51 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                <div style={{ marginTop: "14px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button
-                    className="btn"
-                    onClick={saveEveningPower}
-                    disabled={
-                      !isEveningPowerWindow ||
-                      !selectedEveningPower ||
-                      ((selectedEveningPower === "Zamianka" ||
-                        selectedEveningPower === "Złodziej") &&
-                        !selectedEveningTargetPlayer)
-                    }
-                    style={{
-                      opacity:
+                  <div style={{ marginTop: "14px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                    <button
+                      className="btn"
+                      onClick={saveEveningPower}
+                      disabled={
                         !isEveningPowerWindow ||
                         !selectedEveningPower ||
                         ((selectedEveningPower === "Zamianka" ||
                           selectedEveningPower === "Złodziej") &&
                           !selectedEveningTargetPlayer)
-                          ? 0.55
-                          : 1,
-                    }}
-                  >
-                    Akceptuj moc wieczorną
-                  </button>
+                      }
+                      style={{
+                        opacity:
+                          !isEveningPowerWindow ||
+                          !selectedEveningPower ||
+                          ((selectedEveningPower === "Zamianka" ||
+                            selectedEveningPower === "Złodziej") &&
+                            !selectedEveningTargetPlayer)
+                            ? 0.55
+                            : 1,
+                      }}
+                    >
+                      {savedEveningPower || hasUsedEveningPowerForPreviousDay
+                        ? "Zmień moc wieczorną"
+                        : "Akceptuj moc wieczorną"}
+                    </button>
 
-                  {selectedEveningPower && (
-                    <span className="muted" style={{ alignSelf: "center" }}>
-                      Wybrana: <strong>{selectedEveningPower}</strong>
-                    </span>
-                  )}
-                </div>
+                    {selectedEveningPower && (
+                      <span className="muted" style={{ alignSelf: "center" }}>
+                        Wybrana: <strong>{selectedEveningPower}</strong>
+                        {selectedEveningTargetPlayer ? (
+                          <>
+                            {" "}→ <strong>{selectedEveningTargetPlayer}</strong>
+                          </>
+                        ) : null}
+                      </span>
+                    )}
+                  </div>
                 </>
+              ) : (
+                (savedEveningPower || hasUsedEveningPowerForPreviousDay) && (
+                  <p className="muted" style={{ marginTop: "10px", marginBottom: 0, fontSize: "12px" }}>
+                    Po 20:00 zmiana mocy jest zablokowana.
+                  </p>
+                )
               )}
             </div>
           )}

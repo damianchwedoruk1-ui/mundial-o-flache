@@ -9,6 +9,8 @@ type Props = {
   desc?: string;
   active?: boolean;
   used?: boolean;
+  usedNote?: string;
+  canEditUsed?: boolean;
   onClick?: () => void;
   hideAction?: boolean;
 };
@@ -65,14 +67,14 @@ const powerDescriptions: Record<string, string> = {
   Złodziej: "Zabiera punkty dnia wybranemu graczowi i dodaje je Tobie. Nie działa na gracza chronionego Blokadą.",
 };
 
-export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hideAction }: Props) {
+export function PowerCard({ icon, name, rarity, desc, active, used, usedNote, canEditUsed, onClick, hideAction }: Props) {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const style = rarityStyles[rarity] || rarityStyles.common;
   const imageSrc = powerImages[name];
   const cardDescription = desc || powerDescriptions[name] || "Kliknij kartę, aby wybrać tę moc.";
 
   const handleCardClick = () => {
-    if (used) return;
+    if (used && !canEditUsed) return;
     onClick?.();
   };
 
@@ -85,11 +87,11 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
   return (
     <div
       role="button"
-      tabIndex={used ? -1 : 0}
-      aria-disabled={used}
+      tabIndex={used && !canEditUsed ? -1 : 0}
+      aria-disabled={used && !canEditUsed}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
-      className={`premium-power-card ${active ? "active" : ""} ${used ? "used" : ""}`}
+      className={`premium-power-card ${active ? "active" : ""} ${used ? "used" : ""} ${canEditUsed ? "editable-used" : ""}`}
       style={
         {
           "--power-color": style.color,
@@ -501,7 +503,7 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
               boxShadow: `0 0 12px ${style.color}55`,
             }}
           >
-            {used ? "ZUŻYTA" : active ? "AKTYWNA" : style.label}
+            {used && canEditUsed ? "DO ZMIANY" : used ? "ZUŻYTA" : active ? "AKTYWNA" : style.label}
           </span>
 
           <div
@@ -549,8 +551,28 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
               lineHeight: 1.35,
             }}
           >
-            {hideAction ? "Kliknij kartę, a potem potwierdź wybór poniżej." : "Kliknij, aby wybrać tę moc."}
+            {used && canEditUsed ? "Kliknij inną kartę albo tę kartę, żeby zmienić wybór do 20:00." : hideAction ? "Kliknij kartę, a potem potwierdź wybór poniżej." : "Kliknij, aby wybrać tę moc."}
           </div>
+
+          {used && usedNote && (
+            <div
+              style={{
+                position: "relative",
+                marginTop: "12px",
+                padding: "10px 12px",
+                borderRadius: "14px",
+                background: "rgba(15, 23, 42, 0.82)",
+                border: `1px solid ${style.color}88`,
+                color: "#f8fafc",
+                fontSize: "13px",
+                fontWeight: 900,
+                lineHeight: 1.25,
+                boxShadow: `0 0 18px ${style.color}33`,
+              }}
+            >
+              {usedNote}
+            </div>
+          )}
 
           <div
             style={{
@@ -622,6 +644,21 @@ export function PowerCard({ icon, name, rarity, desc, active, used, onClick, hid
           >
             MOC WYBRANA
           </span>
+
+          {usedNote && (
+            <span
+              style={{
+                position: "relative",
+                color: "#e2e8f0",
+                fontWeight: 850,
+                fontSize: "13px",
+                textAlign: "center",
+                lineHeight: 1.35,
+              }}
+            >
+              {usedNote}
+            </span>
+          )}
         </div>
       </div>
     </div>
