@@ -366,6 +366,28 @@ function getMatchDateTime(value: string) {
   return parseMatchDate(value).getTime();
 }
 
+function getMatchKickoffTime(match: { date: string; time?: string }) {
+  const kickoff = parseMatchDate(match.date);
+  const [hoursValue, minutesValue] = String(match.time || "00:00")
+    .split(":")
+    .map(Number);
+
+  const hours = Number.isFinite(hoursValue) ? hoursValue : 0;
+  const minutes = Number.isFinite(minutesValue) ? minutesValue : 0;
+
+  kickoff.setHours(hours, minutes, 0, 0);
+
+  return kickoff.getTime();
+}
+
+function isMatchStillVisibleForResultInput(match: { date: string; time?: string }, now: Date) {
+  const kickoffTime = getMatchKickoffTime(match);
+  const visibleUntil = kickoffTime + 12 * 60 * 60 * 1000;
+  const currentTime = now.getTime();
+
+  return currentTime >= kickoffTime && currentTime <= visibleUntil;
+}
+
 function normalizePowerText(value?: string | null) {
   return normalizeName(String(value || "")).trim();
 }
@@ -673,6 +695,7 @@ export default function DashboardPage() {
 
   const resultInputMatches = useMemo(() => {
     const datesToShow = new Set<string>();
+    const resultInputNow = new Date();
 
     if (previousMatchDate) {
       datesToShow.add(previousMatchDate);
@@ -683,7 +706,12 @@ export default function DashboardPage() {
     }
 
     return demoMatches
-      .filter((match) => datesToShow.has(match.date))
+      .filter((match) => {
+        return (
+          datesToShow.has(match.date) ||
+          isMatchStillVisibleForResultInput(match, resultInputNow)
+        );
+      })
       .sort((a, b) => {
         const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
 
@@ -4361,7 +4389,7 @@ export default function DashboardPage() {
                 <strong>
                   {[previousMatchDate, currentMatchDate].filter(Boolean).join(" oraz ")}
                 </strong>
-                .
+                . Mecze po rozpoczęciu zostają tu jeszcze przez 12 godzin, żeby dało się wpisać wynik późno w nocy albo rano.
               </p>
             </div>
 
