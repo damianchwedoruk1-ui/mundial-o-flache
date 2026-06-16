@@ -1804,10 +1804,12 @@ export default function DashboardPage() {
       new Set(demoMatches.map((match) => match.date).filter(Boolean))
     ) as string[];
 
+    const getMatchesForDate = (matchDate: string) => {
+      return demoMatches.filter((match) => match.date === matchDate);
+    };
+
     const isPowerLogMatchDateFinished = (matchDate: string) => {
-      const matchesForDate = demoMatches.filter(
-        (match) => match.date === matchDate
-      );
+      const matchesForDate = getMatchesForDate(matchDate);
 
       if (matchesForDate.length === 0) return false;
 
@@ -1822,65 +1824,90 @@ export default function DashboardPage() {
       });
     };
 
+    const isMorningPowerLogVisible = (matchDate: string) => {
+      const matchesForDate = getMatchesForDate(matchDate);
+
+      if (matchesForDate.length === 0) return false;
+
+      const allSubmittedForDate = players.every((player) =>
+        matchesForDate.every((match) =>
+          allPredictions.some(
+            (prediction) =>
+              prediction.match_id === match.id &&
+              predictionMatchesPlayer(prediction, player.name)
+          )
+        )
+      );
+
+      if (allSubmittedForDate) return true;
+
+      const { closesAt } = getBettingWindow(matchDate);
+
+      return now > closesAt;
+    };
+
     allMatchDates.forEach((matchDate) => {
+      if (isMorningPowerLogVisible(matchDate)) {
+        allPredictions.forEach((prediction) => {
+          if (!prediction.power_name) return;
+          if (getPowerTime(prediction.power_name) !== "morning") return;
+
+          const powerMatch = demoMatches.find((match) => match.id === prediction.match_id);
+          if (powerMatch?.date !== matchDate) return;
+
+          const playerName = getPlayerNameFromEmail(
+            prediction.user_email || prediction.user_name || ""
+          );
+
+          if (isPower(prediction.power_name, "Vabank")) {
+            pushLog({
+              id: `${matchDate}-morning-vabank-${playerName}`,
+              matchDate,
+              type: "power",
+              message: `💥 ${playerName} zagrał Vabank.`,
+            });
+          }
+
+          if (isPower(prediction.power_name, "Rozdwojenie Jaźni")) {
+            const targetMatch = demoMatches.find(
+              (match) => match.id === prediction.power_target_match_id
+            );
+            const targetText = targetMatch
+              ? ` na mecz ${targetMatch.teamA} - ${targetMatch.teamB}`
+              : "";
+
+            pushLog({
+              id: `${matchDate}-morning-double-${playerName}`,
+              matchDate,
+              type: "power",
+              message: `🪞 ${playerName} użył Rozdwojenia Jaźni${targetText}.`,
+            });
+          }
+
+          if (isPower(prediction.power_name, "Goleador")) {
+            const teamText = prediction.power_target_team
+              ? ` na drużynę ${prediction.power_target_team}`
+              : "";
+
+            pushLog({
+              id: `${matchDate}-morning-goleador-${playerName}`,
+              matchDate,
+              type: "power",
+              message: `⚽ ${playerName} aktywował Goleadora${teamText}.`,
+            });
+          }
+        });
+      }
+
       if (!isPowerLogMatchDateFinished(matchDate)) {
         return;
       }
 
-      const blockedPlayers = new Set<string>();
-
-      allPredictions.forEach((prediction) => {
-        if (!prediction.power_name) return;
-
-        const powerMatch = demoMatches.find((match) => match.id === prediction.match_id);
-        if (powerMatch?.date !== matchDate) return;
-
-        const playerName = getPlayerNameFromEmail(
-          prediction.user_email || prediction.user_name || ""
-        );
-
-        if (prediction.power_name === "Blokada") {
-          blockedPlayers.add(playerName);
-
-          pushLog({
-            id: `${matchDate}-block-${playerName}`,
-            matchDate,
-            type: "power",
-            message: `🛡️ ${playerName} aktywował Blokadę.`,
-          });
-        }
-
-        if (prediction.power_name === "Vabank") {
-          pushLog({
-            id: `${matchDate}-vabank-${playerName}`,
-            matchDate,
-            type: "power",
-            message: `💥 ${playerName} zagrał Vabank.`,
-          });
-        }
-
-        if (prediction.power_name === "Rozdwojenie Jaźni") {
-          pushLog({
-            id: `${matchDate}-double-${playerName}`,
-            matchDate,
-            type: "power",
-            message: `🪞 ${playerName} użył Rozdwojenia Jaźni.`,
-          });
-        }
-
-        if (prediction.power_name === "Goleador") {
-          pushLog({
-            id: `${matchDate}-goleador-${playerName}`,
-            matchDate,
-            type: "power",
-            message: `⚽ ${playerName} aktywował Goleadora.`,
-          });
-        }
-      });
-
       if (!isEveningPowerSettlementClosed) {
         return;
       }
+
+      const blockedPlayers = new Set<string>();
 
       allDailyPowers.forEach((power) => {
         if (!isSameMatchDate(power.match_date, matchDate)) return;
@@ -1910,6 +1937,10 @@ export default function DashboardPage() {
           power.user_email || power.user_name || ""
         );
 
+        const targetPlayerName = power.target_player
+          ? findPlayerRowByName(players, power.target_player)?.name || power.target_player
+          : "";
+
         if (isPower(power.power_name, "Słabiak")) {
           pushLog({
             id: `${matchDate}-slabiak-${actorName}`,
@@ -1928,38 +1959,38 @@ export default function DashboardPage() {
           });
         }
 
-        if (isPower(power.power_name, "Zamianka") && power.target_player) {
-          if (blockedPlayers.has(power.target_player)) {
+        if (isPower(power.power_name, "Zamianka") && targetPlayerName) {
+          if (blockedPlayers.has(targetPlayerName)) {
             pushLog({
-              id: `${matchDate}-swap-block-${actorName}-${power.target_player}`,
+              id: `${matchDate}-swap-block-${actorName}-${targetPlayerName}`,
               matchDate,
               type: "block",
-              message: `🚫 ${actorName} próbował użyć Zamianki na ${power.target_player}, ale został odbity przez Blokadę.`,
+              message: `🚫 ${actorName} próbował użyć Zamianki na ${targetPlayerName}, ale został odbity przez Blokadę.`,
             });
           } else {
             pushLog({
-              id: `${matchDate}-swap-${actorName}-${power.target_player}`,
+              id: `${matchDate}-swap-${actorName}-${targetPlayerName}`,
               matchDate,
               type: "power",
-              message: `🔁 ${actorName} użył Zamianki na ${power.target_player}.`,
+              message: `🔁 ${actorName} użył Zamianki na ${targetPlayerName}.`,
             });
           }
         }
 
-        if (isPower(power.power_name, "Złodziej") && power.target_player) {
-          if (blockedPlayers.has(power.target_player)) {
+        if (isPower(power.power_name, "Złodziej") && targetPlayerName) {
+          if (blockedPlayers.has(targetPlayerName)) {
             pushLog({
-              id: `${matchDate}-thief-block-${actorName}-${power.target_player}`,
+              id: `${matchDate}-thief-block-${actorName}-${targetPlayerName}`,
               matchDate,
               type: "block",
-              message: `🚫 FRAJER ${actorName} próbował okraść ${power.target_player}, ale dostał Blokadą po łapach 😂`,
+              message: `🚫 FRAJER ${actorName} próbował okraść ${targetPlayerName}, ale dostał Blokadą po łapach 😂`,
             });
           } else {
             pushLog({
-              id: `${matchDate}-thief-${actorName}-${power.target_player}`,
+              id: `${matchDate}-thief-${actorName}-${targetPlayerName}`,
               matchDate,
               type: "power",
-              message: `🦹 ${actorName} użył Złodzieja na ${power.target_player}.`,
+              message: `🦹 ${actorName} użył Złodzieja na ${targetPlayerName}.`,
             });
           }
         }
