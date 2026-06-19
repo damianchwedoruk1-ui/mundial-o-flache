@@ -3990,7 +3990,7 @@ export default function DashboardPage() {
                               boxShadow: "0 0 14px rgba(96, 165, 250, 0.16)",
                             }}
                           >
-                            🌙 {p.eveningPowerName || "Moc"}
+                            🌙 Moc
                           </span>
                         )}
                       </div>
