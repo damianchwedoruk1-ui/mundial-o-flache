@@ -1000,9 +1000,11 @@ export default function DashboardPage() {
         .eq("user_id", activeUser.id);
 
       if (dailyPowerData) {
+        const activeEveningMatchDate = eveningSettlementDate || previousMatchDate;
+
         const eveningForPreviousDay = dailyPowerData.find(
           (power: any) =>
-            isSameMatchDate(power.match_date, previousMatchDate) &&
+            isSameMatchDate(power.match_date, activeEveningMatchDate) &&
             isEveningPowerTime(power.power_time)
         );
 
@@ -1051,6 +1053,48 @@ export default function DashboardPage() {
     return () => window.clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    if (!userName || !eveningSettlementDate) return;
+
+    const userEveningPower = allDailyPowers.find(
+      (power) =>
+        isSameMatchDate(power.match_date, eveningSettlementDate) &&
+        isEveningPowerTime(power.power_time) &&
+        predictionBelongsToPlayer(power.user_name, userName)
+    );
+
+    if (userEveningPower) {
+      const savedTarget = userEveningPower.target_player || "";
+      const hasUnsavedEveningSelection =
+        isEveningPowerWindow &&
+        Boolean(selectedEveningPower) &&
+        (
+          !isPower(selectedEveningPower, userEveningPower.power_name) ||
+          (selectedEveningTargetPlayer || "") !== savedTarget
+        );
+
+      setSavedEveningPower(userEveningPower.power_name);
+      setSavedEveningTargetPlayer(savedTarget);
+
+      if (!hasUnsavedEveningSelection) {
+        setSelectedEveningPower(userEveningPower.power_name);
+        setSelectedEveningTargetPlayer(savedTarget);
+      }
+
+      return;
+    }
+
+    setSavedEveningPower(null);
+    setSavedEveningTargetPlayer("");
+  }, [
+    allDailyPowers,
+    userName,
+    eveningSettlementDate,
+    isEveningPowerWindow,
+    selectedEveningPower,
+    selectedEveningTargetPlayer,
+  ]);
+
   const isCurrentMatchDateFinished =
     Boolean(currentMatchDate) && isFullMatchDateFinished(currentMatchDate, results);
 
@@ -1059,6 +1103,8 @@ export default function DashboardPage() {
     Boolean(eveningPowerWindow) &&
     now >= eveningPowerWindow!.opensAt &&
     now <= eveningPowerWindow!.closesAt;
+
+  const activeEveningStatusMatchDate = eveningSettlementDate || previousMatchDate;
 
   const playerStatuses = useMemo(() => {
     const currentMatchIds = visibleMatches.map((match) => match.id);
@@ -1082,12 +1128,14 @@ export default function DashboardPage() {
           currentDayPredictions.some((prediction) => prediction.match_id === matchId)
         );
 
-      const usedEveningPower = allDailyPowers.some(
+      const usedEveningPowerRecord = allDailyPowers.find(
         (power) =>
-          isSameMatchDate(power.match_date, previousMatchDate) &&
+          isSameMatchDate(power.match_date, activeEveningStatusMatchDate) &&
           isEveningPowerTime(power.power_time) &&
           predictionBelongsToPlayer(power.user_name, player.name)
       );
+
+      const usedEveningPower = Boolean(usedEveningPowerRecord);
 
       const hasPodiumPrediction = allPodiumPredictions.some((prediction) =>
         predictionMatchesPlayer(prediction, player.name)
@@ -1101,6 +1149,7 @@ export default function DashboardPage() {
           hasPower: false,
           hasMorningPower: false,
           hasEveningPower: false,
+          eveningPowerName: null,
           hasPodiumPrediction,
         };
       }
@@ -1113,6 +1162,7 @@ export default function DashboardPage() {
           hasPower: usedEveningPower,
           hasMorningPower: false,
           hasEveningPower: usedEveningPower,
+          eveningPowerName: usedEveningPowerRecord?.power_name || null,
           hasPodiumPrediction,
         };
       }
@@ -1124,6 +1174,7 @@ export default function DashboardPage() {
         hasPower: usedMorningPower,
         hasMorningPower: usedMorningPower,
         hasEveningPower: false,
+        eveningPowerName: null,
         hasPodiumPrediction,
       };
     });
@@ -1132,7 +1183,7 @@ export default function DashboardPage() {
     allDailyPowers,
     allPodiumPredictions,
     visibleMatches,
-    previousMatchDate,
+    activeEveningStatusMatchDate,
     isEveningStatusMode,
     isCurrentMatchDateFinished,
   ]);
@@ -2867,7 +2918,44 @@ export default function DashboardPage() {
 
     await loadAllDailyPowers();
 
-    alert(isChangingEveningPower ? "Moc wieczorna zmieniona. Możesz ją zmieniać do 20:00." : "Moc wieczorna zaakceptowana. Możesz ją zmienić do 20:00.");
+    alert(isChangingEveningPower ? "Moc wieczorna zmieniona. Możesz ją zmieniać albo wycofać do 20:00." : "Moc wieczorna zaakceptowana. Możesz ją zmienić albo wycofać do 20:00.");
+  };
+
+  const withdrawEveningPower = async () => {
+    if (!isEveningPowerWindow || !eveningSettlementDate) {
+      alert("Moc wieczorną można wycofać tylko w oknie 12:00–20:00.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const activeUser = user;
+
+    if (!activeUser) return;
+
+    const { error } = await supabase
+      .from("daily_powers")
+      .delete()
+      .eq("user_id", activeUser.id)
+      .eq("match_date", eveningSettlementDate)
+      .eq("power_time", "evening");
+
+    if (error) {
+      console.error(error);
+      alert("Błąd wycofywania mocy wieczornej: " + error.message);
+      return;
+    }
+
+    setSavedEveningPower(null);
+    setSavedEveningTargetPlayer("");
+    setSelectedEveningPower(null);
+    setSelectedEveningTargetPlayer("");
+
+    await loadAllDailyPowers();
+
+    alert("Moc wieczorna wycofana. Do 20:00 możesz wybrać inną albo zostawić bez mocy.");
   };
 
   const resetEverythingForTests = async () => {
@@ -3902,7 +3990,7 @@ export default function DashboardPage() {
                               boxShadow: "0 0 14px rgba(96, 165, 250, 0.16)",
                             }}
                           >
-                            🌙 Moc
+                            🌙 {p.eveningPowerName || "Moc"}
                           </span>
                         )}
                       </div>
@@ -4980,7 +5068,7 @@ export default function DashboardPage() {
               <p className="muted" style={{ marginTop: "8px", marginBottom: 0 }}>
                 Moc wieczorna dotyczy poprzedniego dnia meczowego:
                 {" "}
-                <strong>{previousMatchDate || "brak poprzedniego dnia"}</strong>.
+                <strong>{eveningSettlementDate || previousMatchDate || "brak poprzedniego dnia"}</strong>.
                 Użyj jej mądrze, bo tego samego dnia nie wybierzesz drugiej.
               </p>
 
@@ -5005,7 +5093,7 @@ export default function DashboardPage() {
                   </p>
                   {isEveningPowerWindow && (
                     <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>
-                      Do 20:00 możesz kliknąć inną kartę albo zmienić cel i zapisać zmianę.
+                      Do 20:00 możesz kliknąć inną kartę, zmienić cel albo całkowicie wycofać moc.
                     </p>
                   )}
                 </div>
@@ -5074,6 +5162,20 @@ export default function DashboardPage() {
                         ? "Zmień moc wieczorną"
                         : "Akceptuj moc wieczorną"}
                     </button>
+
+                    {(savedEveningPower || hasUsedEveningPowerForPreviousDay) && (
+                      <button
+                        className="btn secondary"
+                        onClick={withdrawEveningPower}
+                        style={{
+                          background: "rgba(239, 68, 68, 0.18)",
+                          border: "1px solid rgba(239, 68, 68, 0.45)",
+                          color: "#fecaca",
+                        }}
+                      >
+                        Wycofaj moc wieczorną
+                      </button>
+                    )}
 
                     {selectedEveningPower && (
                       <span className="muted" style={{ alignSelf: "center" }}>
