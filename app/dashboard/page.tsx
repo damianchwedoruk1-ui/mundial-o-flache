@@ -2460,6 +2460,94 @@ export default function DashboardPage() {
     });
   };
 
+  const saveSinglePrediction = async (match: any) => {
+    if (!isBettingOpen) {
+      alert("Pojedynczy typ można zapisać tylko w oknie typowania 20:00–23:59 dzień przed meczami.");
+      return;
+    }
+
+    if (isPredictionLocked) {
+      alert("Typowanie jest już zablokowane.");
+      return;
+    }
+
+    const prediction = predictions[match.id];
+
+    if (
+      !prediction ||
+      prediction.homeScore === "" ||
+      prediction.awayScore === ""
+    ) {
+      alert(`Najpierw wpisz pełny typ dla meczu: ${match.teamA} - ${match.teamB}.`);
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const powerToKeep = savedPower;
+
+    const row = {
+      user_id: user.id,
+      user_email: user.email,
+      match_id: match.id,
+      home_score: Number(prediction.homeScore),
+      away_score: Number(prediction.awayScore),
+      power_name: powerToKeep,
+      power_target_match_id:
+        powerToKeep === "Rozdwojenie Jaźni"
+          ? Number(doublePrediction.matchId)
+          : null,
+      power_home_score:
+        powerToKeep === "Rozdwojenie Jaźni"
+          ? Number(doublePrediction.homeScore)
+          : null,
+      power_away_score:
+        powerToKeep === "Rozdwojenie Jaźni"
+          ? Number(doublePrediction.awayScore)
+          : null,
+      power_target_team:
+        powerToKeep === "Goleador" ? selectedGoleadorTeam : null,
+    };
+
+    const { error: deleteError } = await supabase
+      .from("predictions")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("match_id", match.id);
+
+    if (deleteError) {
+      console.error(deleteError);
+      alert("Błąd usuwania starego typu: " + deleteError.message);
+      return;
+    }
+
+    const { error: insertError } = await supabase
+      .from("predictions")
+      .insert([row]);
+
+    if (insertError) {
+      console.error(insertError);
+      alert("Błąd zapisu typu: " + insertError.message);
+      return;
+    }
+
+    setSavedPredictions((prev) => ({
+      ...prev,
+      [match.id]: {
+        homeScore: prediction.homeScore,
+        awayScore: prediction.awayScore,
+      },
+    }));
+
+    await loadAllPredictions();
+
+    alert(`Zapisano typ: ${match.teamA} - ${match.teamB} ${prediction.homeScore}:${prediction.awayScore}`);
+  };
+
   const savePredictions = async () => {
     if (!isBettingOpen) {
       alert("Typy i moce poranne można zapisać tylko w oknie typowania 20:00–23:59 dzień przed meczami.");
@@ -2575,7 +2663,7 @@ export default function DashboardPage() {
 
     await loadAllPredictions();
 
-    alert("Typy zapisane!");
+    alert("Typy zaakceptowane!");
   };
 
   const resetPredictions = async () => {
@@ -4115,7 +4203,7 @@ export default function DashboardPage() {
                 </button>
               ) : isEditingPredictions ? (
                 <button className="btn" onClick={savePredictions}>
-                  Zapisz typy
+                  Akceptuj typy
                 </button>
               ) : (
                 <button
@@ -4265,6 +4353,30 @@ export default function DashboardPage() {
                       }
                       onPredictionChange={handlePredictionChange}
                     />
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginTop: "-12px",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="btn secondary"
+                        onClick={() => saveSinglePrediction(match)}
+                        style={{
+                          minWidth: "160px",
+                          border: "1px solid rgba(96, 165, 250, 0.35)",
+                          background: savedPredictions[match.id]
+                            ? "rgba(34, 197, 94, 0.18)"
+                            : "rgba(59, 130, 246, 0.18)",
+                        }}
+                      >
+                        {savedPredictions[match.id] ? "💾 Zapisz ponownie" : "💾 Zapisz typ"}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -4432,7 +4544,7 @@ export default function DashboardPage() {
               <p className="muted" style={{ marginBottom: 0 }}>
                 {isPredictionLocked
                   ? "Nie można już edytować dzisiejszych typów."
-                  : "Dzisiejsze mecze są zwinięte. Kliknij „Edytuj dzisiejsze typy”, żeby je rozwinąć i zmienić."}
+                  : "Dzisiejsze mecze są zwinięte. Kliknij „Edytuj dzisiejsze typy”, żeby je rozwinąć i zmienić. Każdy mecz możesz zapisać osobno, a na końcu kliknąć „Akceptuj typy”."}
               </p>
             </div>
           )}
@@ -4988,7 +5100,7 @@ export default function DashboardPage() {
           {powerTab === "morning" && selectedPower && !savedPower && (
             <p className="muted" style={{ marginTop: "12px" }}>
               Wybrana moc poranna: <strong>{selectedPower}</strong>. Aktywuje się
-              dopiero po kliknięciu „Zapisz typy”.
+              dopiero po kliknięciu „Akceptuj typy”.
             </p>
           )}
         </section>
