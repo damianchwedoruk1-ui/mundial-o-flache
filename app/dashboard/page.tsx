@@ -753,9 +753,6 @@ export default function DashboardPage() {
     now >= eveningPowerWindow!.opensAt &&
     now <= eveningPowerWindow!.closesAt;
 
-  const isEveningPowerSettlementClosed =
-    !eveningPowerWindow || now >= eveningPowerWindow.closesAt;
-
   const isDoublePowerSelected = selectedPower === "Rozdwojenie Jaźni";
   const isDoublePowerSaved = savedPower === "Rozdwojenie Jaźni";
 
@@ -1618,7 +1615,13 @@ export default function DashboardPage() {
         }
       });
 
-      const eveningPowersForDay = isEveningPowerSettlementClosed
+      const isEveningPowerSettledForDate = isPowerSettledForStats(
+        matchDate,
+        results,
+        now
+      );
+
+      const eveningPowersForDay = isEveningPowerSettledForDate
         ? allDailyPowers
             .filter(
               (power) =>
@@ -1655,7 +1658,7 @@ export default function DashboardPage() {
         }
       });
 
-      if (isEveningPowerSettlementClosed) {
+      if (isEveningPowerSettledForDate) {
         allDailyPowers.forEach((power) => {
           if (!isPower(power.power_name, "Blokada")) return;
           if (!isSameMatchDate(getEveningPowerApplyDate(power.match_date), matchDate)) return;
@@ -1788,7 +1791,7 @@ export default function DashboardPage() {
     }
 
     return table;
-  }, [results, allPredictions, allDailyPowers, bracketSlots, isEveningPowerSettlementClosed, savedFinalPodiumResults, allPodiumPredictions]);
+  }, [results, allPredictions, allDailyPowers, bracketSlots, savedFinalPodiumResults, allPodiumPredictions]);
 
   const powerLogs = useMemo<PowerLogType[]>(() => {
     const logs: PowerLogType[] = [];
@@ -1903,7 +1906,7 @@ export default function DashboardPage() {
         return;
       }
 
-      if (!isEveningPowerSettlementClosed) {
+      if (!isPowerSettledForStats(matchDate, results, now)) {
         return;
       }
 
@@ -1998,7 +2001,7 @@ export default function DashboardPage() {
     });
 
     return logs.reverse();
-  }, [allPredictions, allDailyPowers, results, isEveningPowerSettlementClosed]);
+  }, [allPredictions, allDailyPowers, results]);
 
   const sortedStandings = useMemo(() => {
     return [...standings].sort(
