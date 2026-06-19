@@ -753,6 +753,7 @@ export default function DashboardPage() {
     now >= eveningPowerWindow!.opensAt &&
     now <= eveningPowerWindow!.closesAt;
 
+
   const isDoublePowerSelected = selectedPower === "Rozdwojenie Jaźni";
   const isDoublePowerSaved = savedPower === "Rozdwojenie Jaźni";
 
@@ -965,8 +966,14 @@ export default function DashboardPage() {
           setPowerTab(getPowerTime(loadedPower));
         }
 
-        if (Object.keys(loadedPredictions).length > 0) {
+        const hasLoadedFullCurrentMatchDate =
+          currentMatchIds.length > 0 &&
+          currentMatchIds.every((matchId) => loadedPredictions[matchId]);
+
+        if (hasLoadedFullCurrentMatchDate) {
           setIsEditingPredictions(false);
+        } else {
+          setIsEditingPredictions(true);
         }
       }
 
@@ -1069,6 +1076,12 @@ export default function DashboardPage() {
           getPowerTime(prediction.power_name) === "morning"
       );
 
+      const hasFullDayPredictions =
+        currentMatchIds.length > 0 &&
+        currentMatchIds.every((matchId) =>
+          currentDayPredictions.some((prediction) => prediction.match_id === matchId)
+        );
+
       const usedEveningPower = allDailyPowers.some(
         (power) =>
           isSameMatchDate(power.match_date, previousMatchDate) &&
@@ -1107,7 +1120,7 @@ export default function DashboardPage() {
       return {
         ...player,
         statusPhase: "morning" as const,
-        hasPredictions: currentDayPredictions.length > 0,
+        hasPredictions: hasFullDayPredictions,
         hasPower: usedMorningPower,
         hasMorningPower: usedMorningPower,
         hasEveningPower: false,
@@ -1124,12 +1137,22 @@ export default function DashboardPage() {
     isCurrentMatchDateFinished,
   ]);
 
+  const currentVisibleMatchIdsForSubmit = visibleMatches.map((match) => match.id);
+
+  const hasPlayerSubmittedFullCurrentMatchDate = (playerName: string) => {
+    if (currentVisibleMatchIdsForSubmit.length === 0) return false;
+
+    return currentVisibleMatchIdsForSubmit.every((matchId) =>
+      allPredictions.some(
+        (prediction) =>
+          prediction.match_id === matchId &&
+          predictionMatchesPlayer(prediction, playerName)
+      )
+    );
+  };
+
   const submittedPlayersCount = players.filter((player) =>
-    allPredictions.some(
-      (prediction) =>
-        visibleMatches.some((match) => match.id === prediction.match_id) &&
-        predictionMatchesPlayer(prediction, player.name)
-    )
+    hasPlayerSubmittedFullCurrentMatchDate(player.name)
   ).length;
 
   const allPlayersSubmitted =
@@ -2478,17 +2501,32 @@ export default function DashboardPage() {
 
     const currentMatchIds = visibleMatches.map((match) => match.id);
 
-    const rows = (Object.entries(predictions) as [string, { homeScore: string; awayScore: string }][])
-      .filter(
-        ([matchId, prediction]) =>
-          currentMatchIds.includes(Number(matchId)) &&
-          prediction.homeScore !== "" &&
-          prediction.awayScore !== ""
-      )
-      .map(([matchId, prediction]) => ({
+    const missingMatches = visibleMatches.filter((match) => {
+      const prediction = predictions[match.id];
+
+      return (
+        !prediction ||
+        prediction.homeScore === "" ||
+        prediction.awayScore === ""
+      );
+    });
+
+    if (missingMatches.length > 0) {
+      const missingNames = missingMatches
+        .map((match) => `${match.teamA} - ${match.teamB}`)
+        .join(", ");
+
+      alert(`Musisz wpisać wszystkie typy z tego dnia. Brakuje: ${missingNames}`);
+      return;
+    }
+
+    const rows = visibleMatches.map((match) => {
+      const prediction = predictions[match.id];
+
+      return {
         user_id: activeUser.id,
         user_email: activeUser.email,
-        match_id: Number(matchId),
+        match_id: match.id,
         home_score: Number(prediction.homeScore),
         away_score: Number(prediction.awayScore),
         power_name: selectedPower,
@@ -2506,12 +2544,8 @@ export default function DashboardPage() {
             : null,
         power_target_team:
           selectedPower === "Goleador" ? selectedGoleadorTeam : null,
-      }));
-
-    if (rows.length === 0) {
-      alert("Nie wpisałeś żadnych typów");
-      return;
-    }
+      };
+    });
 
     let deletePredictionsQuery = supabase
       .from("predictions")
