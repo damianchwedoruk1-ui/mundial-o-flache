@@ -673,6 +673,7 @@ export default function DashboardPage() {
   const [isFinalPodiumOpen, setIsFinalPodiumOpen] = useState(false);
   const [isDailyPointsOpen, setIsDailyPointsOpen] = useState(false);
   const [isLiveDailyPointsOpen, setIsLiveDailyPointsOpen] = useState(false);
+  const [isMatchOnlyStandingsOpen, setIsMatchOnlyStandingsOpen] = useState(false);
   const [selectedPowerStatsPlayer, setSelectedPowerStatsPlayer] = useState<string | null>(null);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
 
@@ -1892,6 +1893,100 @@ export default function DashboardPage() {
 
     return table;
   }, [results, allPredictions, allDailyPowers, bracketSlots, savedFinalPodiumResults, allPodiumPredictions]);
+
+  const matchOnlyStandings = useMemo(() => {
+    const table = players.map((player) => ({
+      name: player.name,
+      points: 0,
+      exact_hits: 0,
+    }));
+
+    const findPlayerForPrediction = (prediction: AllPredictionsType) => {
+      return table.find(
+        (row) =>
+          predictionMatchesPlayer(prediction, row.name) ||
+          samePlayerName(prediction.user_name || "", row.name) ||
+          samePlayerName(prediction.user_email || "", row.name)
+      );
+    };
+
+    const addMatchOnlyPoints = (
+      prediction: AllPredictionsType,
+      points: number,
+      exactHit = false
+    ) => {
+      const player = findPlayerForPrediction(prediction);
+
+      if (!player) return;
+
+      player.points += points;
+
+      if (exactHit) {
+        player.exact_hits += 1;
+      }
+    };
+
+    demoMatches.forEach((match) => {
+      const result = results[match.id];
+
+      const hasResult =
+        result !== undefined &&
+        result.homeScore !== "" &&
+        result.awayScore !== "";
+
+      if (!hasResult) return;
+
+      const realHome = Number(result.homeScore);
+      const realAway = Number(result.awayScore);
+
+      if (Number.isNaN(realHome) || Number.isNaN(realAway)) return;
+
+      const matchPredictions = allPredictions
+        .filter((prediction) => prediction.match_id === match.id)
+        .map((prediction) => ({
+          ...prediction,
+          distance: calculateDistance(
+            prediction.home_score,
+            prediction.away_score,
+            realHome,
+            realAway
+          ),
+        }));
+
+      if (matchPredictions.length === 0) return;
+
+      const exactHits = matchPredictions.filter(
+        (prediction) =>
+          prediction.home_score === realHome &&
+          prediction.away_score === realAway
+      );
+
+      if (exactHits.length === 1) {
+        addMatchOnlyPoints(exactHits[0], 5, true);
+        return;
+      }
+
+      if (exactHits.length > 1) {
+        exactHits.forEach((prediction) => {
+          addMatchOnlyPoints(prediction, 4, true);
+        });
+        return;
+      }
+
+      const minDistance = Math.min(
+        ...matchPredictions.map((prediction) => prediction.distance)
+      );
+      const closest = matchPredictions.filter(
+        (prediction) => prediction.distance === minDistance
+      );
+
+      closest.forEach((prediction) => {
+        addMatchOnlyPoints(prediction, closest.length === 1 ? 2 : 1);
+      });
+    });
+
+    return table;
+  }, [results, allPredictions]);
 
   const powerLogs = useMemo<PowerLogType[]>(() => {
     const logs: PowerLogType[] = [];
@@ -5367,6 +5462,34 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="panel" style={{ gridColumn: "1 / -1" }}>
+          <div
+            className="panel-header"
+            style={{ marginBottom: isMatchOnlyStandingsOpen ? "12px" : 0 }}
+          >
+            <div>
+              <h2 style={{ margin: 0 }}>📋 Punkty za same mecze</h2>
+              <p className="muted" style={{ margin: "6px 0 0", fontSize: "13px" }}>
+                Tabela bez żadnych mocy: bez Vabank, Rozdwojenia Jaźni, Goleadora i mocy wieczornych. Liczy tylko pierwszy, zwykły typ do każdego meczu.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setIsMatchOnlyStandingsOpen((value) => !value)}
+            >
+              {isMatchOnlyStandingsOpen ? "Ukryj" : "Pokaż"}
+            </button>
+          </div>
+
+          {isMatchOnlyStandingsOpen && (
+            <div style={{ marginTop: "12px" }}>
+              <Standings rows={matchOnlyStandings} />
+            </div>
+          )}
         </section>
           </div>
         </>
