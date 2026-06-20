@@ -1344,6 +1344,52 @@ export default function DashboardPage() {
     );
   };
 
+
+  const calculateGoleadorBonusForPrediction = (
+    match: any,
+    prediction?: AllPredictionsType | null
+  ) => {
+    const result = results[Number(match.id)];
+
+    const hasResult =
+      result !== undefined &&
+      result.homeScore !== "" &&
+      result.awayScore !== "";
+
+    if (!hasResult || !prediction) return 0;
+
+    const realHome = Number(result.homeScore);
+    const realAway = Number(result.awayScore);
+
+    if (Number.isNaN(realHome) || Number.isNaN(realAway)) return 0;
+
+    const matchDate = getScoringMatchDate(match);
+    const isFinishedDay = isFullMatchDateFinished(matchDate, results);
+
+    if (
+      !isFinishedDay ||
+      !isPower(prediction.power_name, "Goleador") ||
+      !prediction.power_target_team
+    ) {
+      return 0;
+    }
+
+    const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
+    const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
+
+    let bonus = 0;
+
+    if (prediction.power_target_team === resolvedHomeTeam) {
+      bonus += realHome;
+    }
+
+    if (prediction.power_target_team === resolvedAwayTeam) {
+      bonus += realAway;
+    }
+
+    return bonus;
+  };
+
   const calculateMatchPointsForPlayer = (match: any, playerName: string) => {
     const matchId = Number(match.id);
     const result = results[matchId];
@@ -1359,9 +1405,6 @@ export default function DashboardPage() {
     const realAway = Number(result.awayScore);
 
     if (Number.isNaN(realHome) || Number.isNaN(realAway)) return null;
-
-    const matchDate = getScoringMatchDate(match);
-    const isFinishedDay = isFullMatchDateFinished(matchDate, results);
 
     const matchPredictions = allPredictions
       .filter((prediction) => prediction.match_id === matchId)
@@ -1452,22 +1495,7 @@ export default function DashboardPage() {
       }
     }
 
-    if (
-      isFinishedDay &&
-      playerPrediction.power_name === "Goleador" &&
-      playerPrediction.power_target_team
-    ) {
-      const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
-      const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
-
-      if (playerPrediction.power_target_team === resolvedHomeTeam) {
-        points += realHome;
-      }
-
-      if (playerPrediction.power_target_team === resolvedAwayTeam) {
-        points += realAway;
-      }
-    }
+    points += calculateGoleadorBonusForPrediction(match, playerPrediction);
 
     return points;
   };
@@ -3252,8 +3280,16 @@ export default function DashboardPage() {
                     ? calculateMatchPointsForPlayer(match, player.name)
                     : null;
 
+                  const goleadorBonus =
+                    arePredictionsVisible && prediction
+                      ? calculateGoleadorBonusForPrediction(match, prediction)
+                      : 0;
+
                   const pointsLine =
                     prediction && matchPoints !== null ? `(${matchPoints} pkt)` : "";
+
+                  const goleadorPointsLine =
+                    goleadorBonus > 0 ? `+${goleadorBonus} Goleador` : "";
 
                   return (
                     <td
@@ -3325,6 +3361,19 @@ export default function DashboardPage() {
                               }}
                             >
                               {pointsLine}
+                            </span>
+                          ) : null}
+
+                          {goleadorPointsLine ? (
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                color: "#fb923c",
+                                fontWeight: 950,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {goleadorPointsLine}
                             </span>
                           ) : null}
                         </div>
