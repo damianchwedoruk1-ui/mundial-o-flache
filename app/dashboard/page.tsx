@@ -754,8 +754,8 @@ export default function DashboardPage() {
     now <= eveningPowerWindow!.closesAt;
 
 
-  const isDoublePowerSelected = selectedPower === "Rozdwojenie Jaźni";
-  const isDoublePowerSaved = savedPower === "Rozdwojenie Jaźni";
+  const isDoublePowerSelected = isPower(selectedPower, "Rozdwojenie Jaźni");
+  const isDoublePowerSaved = isPower(savedPower, "Rozdwojenie Jaźni");
 
   const filteredPowers = useMemo(() => {
     return powers.filter((power) => getPowerTime(power.name) === powerTab);
@@ -940,12 +940,12 @@ export default function DashboardPage() {
             loadedPower = prediction.power_name;
           }
 
-          if (prediction.power_name === "Goleador" && prediction.power_target_team) {
+          if (isPower(prediction.power_name, "Goleador") && prediction.power_target_team) {
             setSelectedGoleadorTeam(prediction.power_target_team);
           }
 
           if (
-            prediction.power_name === "Rozdwojenie Jaźni" &&
+            isPower(prediction.power_name, "Rozdwojenie Jaźni") &&
             prediction.power_target_match_id
           ) {
             loadedDouble = {
@@ -1374,8 +1374,7 @@ export default function DashboardPage() {
         );
 
         const hasDoubleForThisMatch =
-          isFinishedDay &&
-          prediction.power_name === "Rozdwojenie Jaźni" &&
+          isPower(prediction.power_name, "Rozdwojenie Jaźni") &&
           prediction.power_target_match_id === matchId &&
           prediction.power_home_score !== null &&
           prediction.power_home_score !== undefined &&
@@ -1554,8 +1553,7 @@ export default function DashboardPage() {
           );
 
           const hasDoubleForThisMatch =
-            isFinishedDay &&
-            p.power_name === "Rozdwojenie Jaźni" &&
+            isPower(p.power_name, "Rozdwojenie Jaźni") &&
             p.power_target_match_id === match.id &&
             p.power_home_score !== null &&
             p.power_home_score !== undefined &&
@@ -2489,9 +2487,9 @@ export default function DashboardPage() {
     }
 
     setSelectedPower((prev) => {
-      const next = prev === powerName ? null : powerName;
+      const next = isPower(prev, powerName) ? null : powerName;
 
-      if (next !== "Rozdwojenie Jaźni") {
+      if (!isPower(next, "Rozdwojenie Jaźni")) {
         setDoublePrediction({
           matchId: "",
           homeScore: "",
@@ -2549,19 +2547,19 @@ export default function DashboardPage() {
       away_score: Number(prediction.awayScore),
       power_name: powerToKeep,
       power_target_match_id:
-        powerToKeep === "Rozdwojenie Jaźni"
+        isPower(powerToKeep, "Rozdwojenie Jaźni")
           ? Number(doublePrediction.matchId)
           : null,
       power_home_score:
-        powerToKeep === "Rozdwojenie Jaźni"
+        isPower(powerToKeep, "Rozdwojenie Jaźni")
           ? Number(doublePrediction.homeScore)
           : null,
       power_away_score:
-        powerToKeep === "Rozdwojenie Jaźni"
+        isPower(powerToKeep, "Rozdwojenie Jaźni")
           ? Number(doublePrediction.awayScore)
           : null,
       power_target_team:
-        powerToKeep === "Goleador" ? selectedGoleadorTeam : null,
+        isPower(powerToKeep, "Goleador") ? selectedGoleadorTeam : null,
     };
 
     const { error: deleteError } = await supabase
@@ -2623,13 +2621,13 @@ export default function DashboardPage() {
       return;
     }
 
-    if (selectedPower === "Goleador" && !selectedGoleadorTeam) {
+    if (isPower(selectedPower, "Goleador") && !selectedGoleadorTeam) {
       alert("Przy Goleadorze wybierz drużynę.");
       return;
     }
 
     if (
-      selectedPower === "Rozdwojenie Jaźni" &&
+      isPower(selectedPower, "Rozdwojenie Jaźni") &&
       (!doublePrediction.matchId ||
         doublePrediction.homeScore === "" ||
         doublePrediction.awayScore === "")
@@ -2670,19 +2668,19 @@ export default function DashboardPage() {
         away_score: Number(prediction.awayScore),
         power_name: selectedPower,
         power_target_match_id:
-          selectedPower === "Rozdwojenie Jaźni"
+          isPower(selectedPower, "Rozdwojenie Jaźni")
             ? Number(doublePrediction.matchId)
             : null,
         power_home_score:
-          selectedPower === "Rozdwojenie Jaźni"
+          isPower(selectedPower, "Rozdwojenie Jaźni")
             ? Number(doublePrediction.homeScore)
             : null,
         power_away_score:
-          selectedPower === "Rozdwojenie Jaźni"
+          isPower(selectedPower, "Rozdwojenie Jaźni")
             ? Number(doublePrediction.awayScore)
             : null,
         power_target_team:
-          selectedPower === "Goleador" ? selectedGoleadorTeam : null,
+          isPower(selectedPower, "Goleador") ? selectedGoleadorTeam : null,
       };
     });
 
@@ -3219,47 +3217,36 @@ export default function DashboardPage() {
                   const realHome = Number(realResult?.homeScore);
                   const realAway = Number(realResult?.awayScore);
 
-                  const hasDoubleForThisMatch =
+                  const hasDoubleForThisMatch = Boolean(
                     prediction &&
-                    prediction.power_name === "Rozdwojenie Jaźni" &&
-                    prediction.power_target_match_id === matchId &&
-                    prediction.power_home_score !== null &&
-                    prediction.power_home_score !== undefined &&
-                    prediction.power_away_score !== null &&
-                    prediction.power_away_score !== undefined;
+                      isPower(prediction.power_name, "Rozdwojenie Jaźni") &&
+                      prediction.power_target_match_id === matchId &&
+                      prediction.power_home_score !== null &&
+                      prediction.power_home_score !== undefined &&
+                      prediction.power_away_score !== null &&
+                      prediction.power_away_score !== undefined
+                  );
 
-                  let displayHomeScore = prediction?.home_score;
-                  let displayAwayScore = prediction?.away_score;
-
-                  if (prediction && hasResult && hasDoubleForThisMatch) {
-                    const baseDistance = calculateDistance(
-                      prediction.home_score,
-                      prediction.away_score,
-                      realHome,
-                      realAway
-                    );
-
-                    const doubleDistance = calculateDistance(
-                      Number(prediction.power_home_score),
-                      Number(prediction.power_away_score),
-                      realHome,
-                      realAway
-                    );
-
-                    if (doubleDistance < baseDistance) {
-                      displayHomeScore = Number(prediction.power_home_score);
-                      displayAwayScore = Number(prediction.power_away_score);
-                    }
-                  }
-
-                  const exact =
-                    prediction &&
+                  const baseExact =
+                    Boolean(prediction) &&
                     hasResult &&
-                    Number(displayHomeScore) === realHome &&
-                    Number(displayAwayScore) === realAway;
+                    Number(prediction?.home_score) === realHome &&
+                    Number(prediction?.away_score) === realAway;
 
-                  const exactWithDoublePower =
-                    Boolean(exact) && Boolean(hasDoubleForThisMatch);
+                  const doubleHomeScore = hasDoubleForThisMatch
+                    ? Number(prediction?.power_home_score)
+                    : null;
+                  const doubleAwayScore = hasDoubleForThisMatch
+                    ? Number(prediction?.power_away_score)
+                    : null;
+
+                  const doubleExact =
+                    hasDoubleForThisMatch &&
+                    hasResult &&
+                    doubleHomeScore === realHome &&
+                    doubleAwayScore === realAway;
+
+                  const exact = Boolean(baseExact || doubleExact);
 
                   const matchPoints = arePredictionsVisible
                     ? calculateMatchPointsForPlayer(match, player.name)
@@ -3281,16 +3268,14 @@ export default function DashboardPage() {
                         color: !arePredictionsVisible
                           ? "#94a3b8"
                           : prediction
-                            ? exact
-                              ? exactWithDoublePower
-                                ? "#c084fc"
-                                : "#4ade80"
-                              : "#e5e7eb"
+                            ? "#e5e7eb"
                             : "#64748b",
                         background:
-                          prediction && exactWithDoublePower
+                          prediction && doubleExact
                             ? "rgba(168, 85, 247, 0.16)"
-                            : undefined,
+                            : prediction && baseExact
+                              ? "rgba(34, 197, 94, 0.10)"
+                              : undefined,
                         fontWeight: prediction ? 950 : 700,
                       }}
                     >
@@ -3304,14 +3289,37 @@ export default function DashboardPage() {
                             justifyItems: "center",
                           }}
                         >
-                          <span style={{ whiteSpace: "nowrap" }}>
-                            {displayHomeScore}:{displayAwayScore}
+                          <span
+                            style={{
+                              whiteSpace: "nowrap",
+                              color: baseExact ? "#4ade80" : "#e5e7eb",
+                            }}
+                          >
+                            {prediction.home_score}:{prediction.away_score}
                           </span>
+
+                          {hasDoubleForThisMatch ? (
+                            <span
+                              style={{
+                                whiteSpace: "nowrap",
+                                color: doubleExact ? "#c084fc" : "#e5e7eb",
+                                fontSize: "12px",
+                                fontWeight: 950,
+                              }}
+                            >
+                              {doubleHomeScore}:{doubleAwayScore}
+                            </span>
+                          ) : null}
+
                           {pointsLine ? (
                             <span
                               style={{
                                 fontSize: "11px",
-                                color: exact ? "inherit" : "#94a3b8",
+                                color: doubleExact
+                                  ? "#c084fc"
+                                  : baseExact
+                                    ? "#4ade80"
+                                    : "#94a3b8",
                                 fontWeight: 800,
                                 whiteSpace: "nowrap",
                               }}
@@ -5003,7 +5011,7 @@ export default function DashboardPage() {
           </div>
 
 
-          {powerTab === "morning" && selectedPower === "Goleador" && !savedPower && (
+          {powerTab === "morning" && isPower(selectedPower, "Goleador") && !savedPower && (
             <div
               className="result-card"
               style={{
