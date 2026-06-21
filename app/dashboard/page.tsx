@@ -1364,11 +1364,7 @@ export default function DashboardPage() {
 
     if (Number.isNaN(realHome) || Number.isNaN(realAway)) return 0;
 
-    const matchDate = getScoringMatchDate(match);
-    const isFinishedDay = isFullMatchDateFinished(matchDate, results);
-
     if (
-      !isFinishedDay ||
       !isPower(prediction.power_name, "Goleador") ||
       !prediction.power_target_team
     ) {
@@ -1651,29 +1647,27 @@ export default function DashboardPage() {
         }
       }
 
-      if (isFinishedDay) {
-        matchPredictions.forEach((prediction) => {
-          if (prediction.power_name !== "Goleador" || !prediction.power_target_team) {
-            return;
-          }
+      matchPredictions.forEach((prediction) => {
+        if (!isPower(prediction.power_name, "Goleador") || !prediction.power_target_team) {
+          return;
+        }
 
-          let bonus = 0;
-          const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
-          const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
+        let bonus = 0;
+        const resolvedHomeTeam = getResolvedMatchTeam(match, "home");
+        const resolvedAwayTeam = getResolvedMatchTeam(match, "away");
 
-          if (prediction.power_target_team === resolvedHomeTeam) {
-            bonus = realHome;
-          }
+        if (prediction.power_target_team === resolvedHomeTeam) {
+          bonus = realHome;
+        }
 
-          if (prediction.power_target_team === resolvedAwayTeam) {
-            bonus = realAway;
-          }
+        if (prediction.power_target_team === resolvedAwayTeam) {
+          bonus = realAway;
+        }
 
-          if (bonus > 0) {
-            addDailyPoints(prediction.user_name, matchDate, bonus);
-          }
-        });
-      }
+        if (bonus > 0) {
+          addDailyPoints(prediction.user_name, matchDate, bonus);
+        }
+      });
     });
 
     const allMatchDates = Array.from(
@@ -1734,8 +1728,10 @@ export default function DashboardPage() {
             )
         : [];
 
+      const isFullDayFinished = isFullMatchDateFinished(matchDate, results);
+      const hasAnyMorningPointsForDate = getDailyPointsTotal(matchDate) > 0;
       const shouldSettleDate =
-        isFullMatchDateFinished(matchDate, results) || eveningPowersForDay.length > 0;
+        hasAnyMorningPointsForDate || isFullDayFinished || eveningPowersForDay.length > 0;
 
       if (!shouldSettleDate) {
         return;
@@ -1788,6 +1784,11 @@ export default function DashboardPage() {
         if (!vabankPrediction) return;
 
         const dayPoints = player.daily_points[matchDate] || 0;
+
+        if (dayPoints === 0 && !isFullDayFinished) {
+          return;
+        }
+
         player.points -= dayPoints;
 
         if (dayPoints === 0) {
@@ -4003,7 +4004,7 @@ export default function DashboardPage() {
             {renderPredictionsResultsTable(predictionTableMatches, "430px")}
 
             <p className="muted" style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
-              Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni. Punkty w nawiasie są za konkretny mecz, bez mocy wieczornych i bez mnożnika Vabank.
+              Zielony typ = dokładnie trafiony wynik. Fioletowy = trafiony wynik gracza, który użył Rozdwojenia Jaźni. Punkty w nawiasie są za konkretny mecz, z porannymi bonusami za Goleadora i Rozdwojenie Jaźni, bez mocy wieczornych i bez mnożnika Vabank.
             </p>
           </div>
 
