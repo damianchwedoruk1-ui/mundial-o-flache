@@ -4023,39 +4023,26 @@ export default function DashboardPage() {
               const statusColor = isFinishedPhase
                 ? "#64748b"
                 : isEveningPhase
-                  ? p.hasEveningPower
-                    ? "#60a5fa"
-                    : "#ef4444"
+                  ? "#ef4444"
                   : p.hasPredictions
-                    ? p.hasMorningPower
-                      ? "#a855f7"
-                      : "#22c55e"
+                    ? "#22c55e"
                     : "#ef4444";
 
               const statusIcon = isFinishedPhase
                 ? "✅"
                 : isEveningPhase
-                  ? p.hasEveningPower
-                    ? "🌙"
-                    : "⏳"
+                  ? "⏳"
                   : p.hasPredictions
-                    ? p.hasMorningPower
-                      ? "⚡"
-                      : "⚽"
+                    ? "⚽"
                     : "⏳";
 
               const statusText = isFinishedPhase
                 ? "Dzień rozliczony"
                 : isEveningPhase
-                  ? p.hasEveningPower
-                    ? "Moc wieczorna dodana"
-                    : "Możliwość dodania mocy wieczornej"
+                  ? "Możliwość dodania mocy wieczornej"
                   : p.hasPredictions
                     ? "Typy oddane"
                     : "Czeka";
-
-              const usedMorningPower = !isEveningPhase && p.hasMorningPower;
-              const usedEveningPower = isEveningPhase && p.hasEveningPower;
 
               return (
                 <div className="status-card" key={p.id}>
@@ -4097,57 +4084,6 @@ export default function DashboardPage() {
 
                       {statusText}
                     </span>
-
-                    {(usedMorningPower || usedEveningPower) && (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "8px",
-                          flexWrap: "wrap",
-                          marginTop: "8px",
-                        }}
-                      >
-                        {usedMorningPower && (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "6px 10px",
-                              borderRadius: "999px",
-                              background: "rgba(250, 204, 21, 0.18)",
-                              border: "1px solid rgba(250, 204, 21, 0.45)",
-                              color: "#fde68a",
-                              fontSize: "12px",
-                              fontWeight: 900,
-                              boxShadow: "0 0 14px rgba(250, 204, 21, 0.16)",
-                            }}
-                          >
-                            ☀️ Moc
-                          </span>
-                        )}
-
-                        {usedEveningPower && (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "6px 10px",
-                              borderRadius: "999px",
-                              background: "rgba(96, 165, 250, 0.18)",
-                              border: "1px solid rgba(96, 165, 250, 0.45)",
-                              color: "#bfdbfe",
-                              fontSize: "12px",
-                              fontWeight: 900,
-                              boxShadow: "0 0 14px rgba(96, 165, 250, 0.16)",
-                            }}
-                          >
-                            🌙 Moc
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -4161,9 +4097,7 @@ export default function DashboardPage() {
               </>
             ) : isEveningStatusMode ? (
               <>
-                Moce wieczorne:{" "}
-                <strong>{playerStatuses.filter((player) => player.hasEveningPower).length}</strong> /{" "}
-                <strong>{players.length}</strong>
+                Moce wieczorne można dodać do 20:00. Użyte moce pojawią się w logu po rozliczeniu.
               </>
             ) : (
               <>
