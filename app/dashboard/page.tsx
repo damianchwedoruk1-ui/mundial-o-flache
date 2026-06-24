@@ -182,6 +182,14 @@ function getFlag(teamName: string) {
 function normalizeName(value: string) {
   return value
     .toLowerCase()
+    .replace(/[łŁ]/g, "l")
+    .replace(/[ąĄ]/g, "a")
+    .replace(/[ćĆ]/g, "c")
+    .replace(/[ęĘ]/g, "e")
+    .replace(/[ńŃ]/g, "n")
+    .replace(/[óÓ]/g, "o")
+    .replace(/[śŚ]/g, "s")
+    .replace(/[źŹżŻ]/g, "z")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 }
@@ -207,10 +215,10 @@ function getPlayerNameFromEmail(email: string) {
 function getTestEmailForPlayer(playerName: string) {
   const normalized = normalizeName(playerName);
 
-  if (normalized === "damian") return "damian@test.local";
-  if (normalized === "andrzej") return "andrzej@test.local";
-  if (normalized === "fabian") return "fabian@test.local";
-  if (normalized === "michal") return "michal@test.local";
+  if (normalized === "damian") return "damian@test.pl";
+  if (normalized === "andrzej") return "andrzej@test.pl";
+  if (normalized === "fabian") return "fabian@test.pl";
+  if (normalized === "michal") return "michal@test.pl";
 
   return "";
 }
@@ -322,6 +330,7 @@ type DailyPowerType = {
 // BRACKET_VIEW_FIX_2026_06_05: drabinka jako osobny widok z poziomym przewijaniem
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
+// MICHAL_POWER_USED_FIX_2026_06_24: normalizacja ł->l i dopasowanie po test.pl, aby Michałowi poprawnie blokowało wykorzystane moce
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -767,7 +776,7 @@ export default function DashboardPage() {
 
     allPredictions
       .filter((prediction) =>
-        predictionBelongsToPlayer(prediction.user_name, userName)
+        predictionMatchesPlayer(prediction, userName)
       )
       .forEach((prediction) => {
         if (prediction.power_name) {
@@ -776,7 +785,7 @@ export default function DashboardPage() {
       });
 
     allDailyPowers
-      .filter((power) => predictionBelongsToPlayer(power.user_name, userName))
+      .filter((power) => predictionMatchesPlayer(power, userName))
       .forEach((power) => {
         if (power.power_name) {
           used.add(power.power_name);
@@ -910,7 +919,7 @@ export default function DashboardPage() {
       if (!activeUser) return;
 
       if (activeUser.email) {
-        setUserName(activeUser.email.split("@")[0]);
+        setUserName(getPlayerNameFromEmail(activeUser.email || ""));
         setIsAdmin(testAdminEmails.includes(activeUser.email));
       }
 
@@ -1061,7 +1070,7 @@ export default function DashboardPage() {
       (power) =>
         isSameMatchDate(power.match_date, eveningSettlementDate) &&
         isEveningPowerTime(power.power_time) &&
-        predictionBelongsToPlayer(power.user_name, userName)
+        predictionMatchesPlayer(power, userName)
     );
 
     if (userEveningPower) {
@@ -2510,7 +2519,7 @@ export default function DashboardPage() {
   const hasUsedMorningPowerToday = allPredictions.some(
     (prediction) =>
       visibleMatches.some((match) => match.id === prediction.match_id) &&
-      predictionBelongsToPlayer(prediction.user_name, userName) &&
+      predictionMatchesPlayer(prediction, userName) &&
       prediction.power_name &&
       getPowerTime(prediction.power_name) === "morning"
   );
@@ -2521,7 +2530,7 @@ export default function DashboardPage() {
       (power) =>
         isSameMatchDate(power.match_date, eveningSettlementDate) &&
         isEveningPowerTime(power.power_time) &&
-        predictionBelongsToPlayer(power.user_name, userName)
+        predictionMatchesPlayer(power, userName)
     );
 
   const saveKnockoutBracket = async () => {
@@ -3496,7 +3505,7 @@ export default function DashboardPage() {
         .find(
           (power) =>
             Boolean(userName) &&
-            predictionBelongsToPlayer(power.user_name, userName) &&
+            predictionMatchesPlayer(power, userName) &&
             isPower(power.power_name, powerName)
         );
 
@@ -3530,7 +3539,7 @@ export default function DashboardPage() {
       .find(
         (prediction) =>
           Boolean(userName) &&
-          predictionBelongsToPlayer(prediction.user_name, userName) &&
+          predictionMatchesPlayer(prediction, userName) &&
           prediction.power_name &&
           isPower(prediction.power_name, powerName)
       );
