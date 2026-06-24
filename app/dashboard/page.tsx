@@ -3396,6 +3396,19 @@ export default function DashboardPage() {
                   const goleadorPointsLine =
                     goleadorBonus > 0 ? `+${goleadorBonus} Goleador` : "";
 
+                  const hasVabankForThisMatchDate =
+                    arePredictionsVisible &&
+                    allPredictions.some((item) => {
+                      if (!predictionMatchesPlayer(item, player.name)) return false;
+                      if (!isPower(item.power_name, "Vabank")) return false;
+
+                      const powerMatch = demoMatches.find(
+                        (demoMatch) => demoMatch.id === item.match_id
+                      );
+
+                      return isSameMatchDate(powerMatch?.date || "", match.date);
+                    });
+
                   return (
                     <td
                       key={`types-cell-${match.id}-${player.name}`}
@@ -3411,12 +3424,16 @@ export default function DashboardPage() {
                           : prediction
                             ? "#e5e7eb"
                             : "#64748b",
-                        background:
-                          prediction && doubleExact
+                        background: hasVabankForThisMatchDate
+                          ? "linear-gradient(135deg, rgba(250, 204, 21, 0.26), rgba(245, 158, 11, 0.16))"
+                          : prediction && doubleExact
                             ? "rgba(168, 85, 247, 0.16)"
                             : prediction && baseExact
                               ? "rgba(34, 197, 94, 0.10)"
                               : undefined,
+                        boxShadow: hasVabankForThisMatchDate
+                          ? "inset 0 0 0 1px rgba(250, 204, 21, 0.35), inset 0 0 22px rgba(250, 204, 21, 0.13)"
+                          : undefined,
                         fontWeight: prediction ? 950 : 700,
                       }}
                     >
@@ -3479,6 +3496,20 @@ export default function DashboardPage() {
                               }}
                             >
                               {goleadorPointsLine}
+                            </span>
+                          ) : null}
+
+                          {hasVabankForThisMatchDate ? (
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                color: "#fde68a",
+                                fontWeight: 950,
+                                whiteSpace: "nowrap",
+                                textShadow: "0 0 10px rgba(250, 204, 21, 0.55)",
+                              }}
+                            >
+                              Vabank
                             </span>
                           ) : null}
                         </div>
