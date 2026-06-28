@@ -399,6 +399,7 @@ type DailyPowerType = {
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
 // MICHAL_POWER_USED_FIX_2026_06_24: normalizacja ł->l i dopasowanie po test.pl, aby Michałowi poprawnie blokowało wykorzystane moce
+// KNOCKOUT_MANUAL_SQL_ONLY_FIX_2026_06_28: drabinka zostaje w normalnym oknie 20:00-23:59; zalegly typ tylko przez SQL, pelna tabela sortowana data+godzina
 // KNOCKOUT_BETTING_RLS_FIX_2026_06_28: mecze drabinki w typowaniu + zapis slotow przez upsert
 type PowerLogType = {
   id: string;
@@ -545,6 +546,24 @@ function getBettingWindow(matchDate: string) {
   closesAt.setHours(23, 59, 59, 999);
 
   return { opensAt, closesAt };
+}
+
+function sortMatchesByDateTime<T extends { date?: string; time?: string; id?: number | string }>(matches: T[]) {
+  return [...matches].sort((a, b) => {
+    const aHasDate = Boolean(a.date);
+    const bHasDate = Boolean(b.date);
+
+    if (aHasDate && bHasDate) {
+      const aTime = getMatchKickoffTime({ date: String(a.date), time: a.time });
+      const bTime = getMatchKickoffTime({ date: String(b.date), time: b.time });
+
+      if (aTime !== bTime) return aTime - bTime;
+    }
+
+    if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
 }
 
 function getCurrentMatchDate(matches: any[]) {
@@ -1353,7 +1372,10 @@ export default function DashboardPage() {
   }, []);
 
   const allPredictionTableMatches = useMemo(() => {
-    return [...fullGroupPredictionTableMatches, ...bracketPredictionTableMatches];
+    return sortMatchesByDateTime([
+      ...fullGroupPredictionTableMatches,
+      ...bracketPredictionTableMatches,
+    ]);
   }, [bracketPredictionTableMatches]);
 
   const predictionTableMatches = useMemo(() => {
