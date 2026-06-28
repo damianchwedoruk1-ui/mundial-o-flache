@@ -91,6 +91,74 @@ const knockoutFirstRoundMatches: KnockoutFirstRoundMatch[] = [
   { id: "M64", date: "4 lip", time: "03:30", homeSlot: "1K", awaySlot: "3D/3E/3I/3J/3L" },
 ];
 
+
+const KNOCKOUT_PREDICTION_MATCH_ID_OFFSET = 10000;
+
+function getKnockoutPredictionMatchId(matchId: string) {
+  const numericId = Number(String(matchId).replace("M", ""));
+
+  return KNOCKOUT_PREDICTION_MATCH_ID_OFFSET + numericId;
+}
+
+function getBracketMatchIdForSlot(matchId: string | number) {
+  const raw = String(matchId);
+  const numericId = Number(raw);
+
+  if (Number.isFinite(numericId) && numericId >= KNOCKOUT_PREDICTION_MATCH_ID_OFFSET) {
+    return `M${numericId - KNOCKOUT_PREDICTION_MATCH_ID_OFFSET}`;
+  }
+
+  return raw.startsWith("M") ? raw : `M${raw}`;
+}
+
+function normalizeKnockoutMatchDate(date: string) {
+  const raw = String(date || "").trim();
+
+  if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(raw)) {
+    return raw;
+  }
+
+  const monthMap: Record<string, string> = {
+    sty: "01",
+    lut: "02",
+    mar: "03",
+    kwi: "04",
+    maj: "05",
+    cze: "06",
+    lip: "07",
+    sie: "08",
+    wrz: "09",
+    paz: "10",
+    paź: "10",
+    lis: "11",
+    gru: "12",
+  };
+
+  const match = raw.toLowerCase().match(/^(\d{1,2})\s+([a-ząćęłńóśźż]+)/i);
+
+  if (!match) return raw;
+
+  const [, day, monthName] = match;
+  const month = monthMap[monthName.slice(0, 3)] || monthMap[monthName];
+
+  if (!month) return raw;
+
+  return `${day.padStart(2, "0")}.${month}.2026`;
+}
+
+const knockoutPredictionMatches = knockoutFirstRoundMatches.map((match) => ({
+  id: getKnockoutPredictionMatchId(match.id),
+  knockoutId: match.id,
+  group: "Drabinka — 1/32 finału",
+  date: normalizeKnockoutMatchDate(match.date),
+  time: match.time,
+  teamA: match.homeSlot,
+  teamB: match.awaySlot,
+  isKnockout: true,
+}));
+
+const allTournamentMatches = [...demoMatches, ...knockoutPredictionMatches];
+
 const knockoutLaterRounds = [
   { title: "1/8 finału", items: ["W73 vs W75", "W74 vs W77", "W81 vs W82", "W83 vs W84", "W76 vs W78", "W79 vs W80", "W85 vs W87", "W86 vs W88"] },
   { title: "Ćwierćfinały", items: ["W89 vs W90", "W93 vs W94", "W91 vs W92", "W95 vs W96"] },
@@ -331,6 +399,7 @@ type DailyPowerType = {
 // POWERS_SETTLE_FIX_2026_06_05: wszystkie moce rozliczaja sie dopiero po komplecie wynikow dnia, Blokada wieczorna
 // POWER_LOG_FIX_2026_06_05: log mocy pokazuje się dopiero po wpisaniu wszystkich wyników dnia
 // MICHAL_POWER_USED_FIX_2026_06_24: normalizacja ł->l i dopasowanie po test.pl, aby Michałowi poprawnie blokowało wykorzystane moce
+// KNOCKOUT_BETTING_RLS_FIX_2026_06_28: mecze drabinki w typowaniu + zapis slotow przez upsert
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -532,7 +601,7 @@ function getEveningPowerWindow(currentMatchDate: string) {
 
 
 function isFullMatchDateFinished(matchDate: string, results: ResultsType) {
-  const matchesForDate = demoMatches.filter((match) => match.date === matchDate);
+  const matchesForDate = allTournamentMatches.filter((match) => match.date === matchDate);
 
   if (matchesForDate.length === 0) return false;
 
@@ -688,10 +757,10 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
-  const currentMatchDate = useMemo(() => getCurrentMatchDate(demoMatches), []);
+  const currentMatchDate = useMemo(() => getCurrentMatchDate(allTournamentMatches), []);
 
   const visibleMatches = useMemo(() => {
-    return demoMatches.filter((match) => match.date === currentMatchDate);
+    return allTournamentMatches.filter((match) => match.date === currentMatchDate);
   }, [currentMatchDate]);
 
   const currentBettingWindow = useMemo(() => {
@@ -701,7 +770,7 @@ export default function DashboardPage() {
   }, [currentMatchDate]);
 
   const previousMatchDate = useMemo(() => {
-    return getPreviousMatchDate(demoMatches, currentMatchDate);
+    return getPreviousMatchDate(allTournamentMatches, currentMatchDate);
   }, [currentMatchDate]);
 
   const resultInputMatches = useMemo(() => {
@@ -716,7 +785,7 @@ export default function DashboardPage() {
       datesToShow.add(currentMatchDate);
     }
 
-    return demoMatches
+    return allTournamentMatches
       .filter((match) => {
         return (
           datesToShow.has(match.date) ||
@@ -735,7 +804,7 @@ export default function DashboardPage() {
 
   const eveningSettlementDate = useMemo(() => {
     const finishedDates = Array.from(
-      new Set(demoMatches.map((match) => match.date).filter(Boolean))
+      new Set(allTournamentMatches.map((match) => match.date).filter(Boolean))
     )
       .filter((date) => isFullMatchDateFinished(date, results))
       .sort((a, b) => getMatchDateTime(a) - getMatchDateTime(b));
@@ -1222,7 +1291,7 @@ export default function DashboardPage() {
   const isPredictionLocked = isAfterDeadline || allPlayersSubmitted;
 
   const hasPlayerSubmittedFullMatchDate = (playerName: string, matchDate: string) => {
-    const matchesForDate = demoMatches.filter((match) => match.date === matchDate);
+    const matchesForDate = allTournamentMatches.filter((match) => match.date === matchDate);
 
     if (matchesForDate.length === 0) return false;
 
@@ -1257,9 +1326,9 @@ export default function DashboardPage() {
 
   const bracketPredictionTableMatches = useMemo(() => {
     const firstRound = knockoutFirstRoundMatches.map((match) => ({
-      id: Number(match.id.replace("M", "")),
+      id: getKnockoutPredictionMatchId(match.id),
       group: "Drabinka — 1/32 finału",
-      date: match.date,
+      date: normalizeKnockoutMatchDate(match.date),
       time: match.time,
       teamA: match.homeSlot,
       teamB: match.awaySlot,
@@ -1298,7 +1367,7 @@ export default function DashboardPage() {
       datesToShow.add(currentMatchDate);
     }
 
-    return demoMatches
+    return allTournamentMatches
       .filter((match) => datesToShow.has(match.date))
       .sort((a, b) => {
         const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
@@ -1313,8 +1382,8 @@ export default function DashboardPage() {
     if (typeof match.id === "number" && match.group?.startsWith("Drabinka")) {
       return {
         ...match,
-        teamA: bracketSlots[`M${match.id}_home`] || match.teamA,
-        teamB: bracketSlots[`M${match.id}_away`] || match.teamB,
+        teamA: bracketSlots[getBracketSlotIdForMatchSide(match.id, "home")] || match.teamA,
+        teamB: bracketSlots[getBracketSlotIdForMatchSide(match.id, "away")] || match.teamB,
       };
     }
 
@@ -1328,10 +1397,10 @@ export default function DashboardPage() {
   };
 
   const getBracketSlotIdForMatchSide = (
-    matchId: number,
+    matchId: number | string,
     side: "home" | "away"
   ) => {
-    return `M${matchId}_${side}`;
+    return `${getBracketMatchIdForSlot(matchId)}_${side}`;
   };
 
   const getResolvedMatchTeam = (match: any, side: "home" | "away") => {
@@ -1352,6 +1421,21 @@ export default function DashboardPage() {
       isBracketPlaceholderTeam(match.teamA) ||
       isBracketPlaceholderTeam(match.teamB)
     );
+  };
+
+  const hasUnresolvedBracketTeamSelection = (match: any) => {
+    if (!matchNeedsTeamSelection(match)) return false;
+
+    const displayMatch = getDisplayMatch(match);
+
+    return (
+      isBracketPlaceholderTeam(displayMatch.teamA) ||
+      isBracketPlaceholderTeam(displayMatch.teamB)
+    );
+  };
+
+  const getUnresolvedBracketMatches = (matchesToCheck: any[]) => {
+    return matchesToCheck.filter((match) => hasUnresolvedBracketTeamSelection(match));
   };
 
 
@@ -1559,7 +1643,7 @@ export default function DashboardPage() {
       }
     };
 
-    demoMatches.forEach((match) => {
+    allTournamentMatches.forEach((match) => {
       const result = results[match.id];
 
       if (!result) return;
@@ -1680,7 +1764,7 @@ export default function DashboardPage() {
     });
 
     const allMatchDates = Array.from(
-      new Set(demoMatches.map((match) => match.date).filter(Boolean))
+      new Set(allTournamentMatches.map((match) => match.date).filter(Boolean))
     ) as string[];
 
     const getDailyPointsTotal = (date: string) =>
@@ -1751,7 +1835,7 @@ export default function DashboardPage() {
       allPredictions.forEach((prediction) => {
         if (prediction.power_name !== "Blokada") return;
 
-        const powerMatch = demoMatches.find((match) => match.id === prediction.match_id);
+        const powerMatch = allTournamentMatches.find((match) => match.id === prediction.match_id);
 
         if (powerMatch?.date === matchDate) {
           const player = table.find((row) =>
@@ -1785,7 +1869,7 @@ export default function DashboardPage() {
           if (prediction.power_name !== "Vabank") return false;
           if (!predictionMatchesPlayer(prediction, player.name)) return false;
 
-          const powerMatch = demoMatches.find((match) => match.id === prediction.match_id);
+          const powerMatch = allTournamentMatches.find((match) => match.id === prediction.match_id);
 
           return powerMatch?.date === matchDate;
         });
@@ -1936,7 +2020,7 @@ export default function DashboardPage() {
       }
     };
 
-    demoMatches.forEach((match) => {
+    allTournamentMatches.forEach((match) => {
       const result = results[match.id];
 
       const hasResult =
@@ -2009,11 +2093,11 @@ export default function DashboardPage() {
     };
 
     const allMatchDates = Array.from(
-      new Set(demoMatches.map((match) => match.date).filter(Boolean))
+      new Set(allTournamentMatches.map((match) => match.date).filter(Boolean))
     ) as string[];
 
     const getMatchesForDate = (matchDate: string) => {
-      return demoMatches.filter((match) => match.date === matchDate);
+      return allTournamentMatches.filter((match) => match.date === matchDate);
     };
 
     const isPowerLogMatchDateFinished = (matchDate: string) => {
@@ -2060,7 +2144,7 @@ export default function DashboardPage() {
           if (!prediction.power_name) return;
           if (getPowerTime(prediction.power_name) !== "morning") return;
 
-          const powerMatch = demoMatches.find((match) => match.id === prediction.match_id);
+          const powerMatch = allTournamentMatches.find((match) => match.id === prediction.match_id);
           if (powerMatch?.date !== matchDate) return;
 
           const playerName = getPlayerNameFromEmail(
@@ -2077,7 +2161,7 @@ export default function DashboardPage() {
           }
 
           if (isPower(prediction.power_name, "Rozdwojenie Jaźni")) {
-            const targetMatch = demoMatches.find(
+            const targetMatch = allTournamentMatches.find(
               (match) => match.id === prediction.power_target_match_id
             );
             const targetText = targetMatch
@@ -2214,7 +2298,7 @@ export default function DashboardPage() {
     );
   }, [standings]);
 
-  const dailyPointsTableDates = getDailyPointsTableDates(demoMatches, now);
+  const dailyPointsTableDates = getDailyPointsTableDates(allTournamentMatches, now);
   const settlementDailyPointsDate =
     dailyPointsTableDates.settlementDate || previousMatchDate || currentMatchDate;
   const liveDailyPointsDate =
@@ -2278,7 +2362,7 @@ export default function DashboardPage() {
           predictionMatchesPlayer(prediction, player.name) && Boolean(prediction.power_name)
         )
         .forEach((prediction) => {
-          const match = demoMatches.find((demoMatch) => demoMatch.id === prediction.match_id);
+          const match = allTournamentMatches.find((demoMatch) => demoMatch.id === prediction.match_id);
           const matchDate = match?.date || "Brak daty";
 
           if (!isPowerSettledForStats(matchDate, results, now)) return;
@@ -2303,7 +2387,7 @@ export default function DashboardPage() {
           }
 
           if (isPower(powerName, "Rozdwojenie Jaźni") && prediction.power_target_match_id) {
-            const targetMatch = demoMatches.find(
+            const targetMatch = allTournamentMatches.find(
               (demoMatch) => demoMatch.id === prediction.power_target_match_id
             );
 
@@ -2533,7 +2617,7 @@ export default function DashboardPage() {
         predictionMatchesPlayer(power, userName)
     );
 
-  const saveKnockoutBracket = async () => {
+  const persistKnockoutBracket = async (showSuccessAlert = false) => {
     const rows = Object.entries(bracketSlots)
       .filter(([, teamName]) => teamName)
       .map(([slotId, teamName]) => ({
@@ -2541,31 +2625,35 @@ export default function DashboardPage() {
         team_name: teamName,
       }));
 
-    const { error: deleteError } = await supabase
-      .from("knockout_bracket")
-      .delete()
-      .neq("slot_id", "__never__");
+    if (rows.length === 0) {
+      if (showSuccessAlert) {
+        alert("Nie wybrano jeszcze żadnych drużyn w drabince.");
+      }
 
-    if (deleteError) {
-      console.error(deleteError);
-      alert("Błąd czyszczenia drabinki: " + deleteError.message);
-      return;
+      return true;
     }
 
-    if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("knockout_bracket")
-        .insert(rows);
+    const { error: upsertError } = await supabase
+      .from("knockout_bracket")
+      .upsert(rows, { onConflict: "slot_id" });
 
-      if (insertError) {
-        console.error(insertError);
-        alert("Błąd zapisu drabinki: " + insertError.message);
-        return;
-      }
+    if (upsertError) {
+      console.error(upsertError);
+      alert("Błąd zapisu drabinki: " + upsertError.message);
+      return false;
     }
 
     await loadKnockoutBracket();
-    alert("Drabinka zapisana!");
+
+    if (showSuccessAlert) {
+      alert("Drabinka zapisana!");
+    }
+
+    return true;
+  };
+
+  const saveKnockoutBracket = async () => {
+    await persistKnockoutBracket(true);
   };
 
   const togglePower = (powerName: string) => {
@@ -2670,6 +2758,19 @@ export default function DashboardPage() {
 
     if (!user) return;
 
+    const unresolvedBracketMatches = getUnresolvedBracketMatches([match]);
+
+    if (unresolvedBracketMatches.length > 0) {
+      alert("Najpierw wybierz drużyny w meczu pucharowym, dopiero potem zapisz typ.");
+      return;
+    }
+
+    if (matchNeedsTeamSelection(match)) {
+      const bracketSaved = await persistKnockoutBracket(false);
+
+      if (!bracketSaved) return;
+    }
+
     const powerToKeep = savedPower;
 
     const row = {
@@ -2767,6 +2868,23 @@ export default function DashboardPage() {
     ) {
       alert("Przy Rozdwojeniu Jaźni wybierz mecz i wpisz drugi wynik.");
       return;
+    }
+
+    const unresolvedBracketMatches = getUnresolvedBracketMatches(visibleMatches);
+
+    if (unresolvedBracketMatches.length > 0) {
+      const missingNames = unresolvedBracketMatches
+        .map((match) => `${match.teamA} - ${match.teamB}`)
+        .join(", ");
+
+      alert(`Najpierw wybierz drużyny w meczach pucharowych: ${missingNames}`);
+      return;
+    }
+
+    if (visibleMatches.some((match) => matchNeedsTeamSelection(match))) {
+      const bracketSaved = await persistKnockoutBracket(false);
+
+      if (!bracketSaved) return;
     }
 
     const currentMatchIds = visibleMatches.map((match) => match.id);
@@ -3248,7 +3366,7 @@ export default function DashboardPage() {
 
   const selectedDoubleMatch =
     visibleMatches.find((match) => match.id === Number(doublePrediction.matchId)) ||
-    demoMatches.find((match) => match.id === Number(doublePrediction.matchId));
+    allTournamentMatches.find((match) => match.id === Number(doublePrediction.matchId));
 
 
   const renderPredictionsResultsTable = (matchesToShow: any[], height: string) => (
@@ -3402,7 +3520,7 @@ export default function DashboardPage() {
                       if (!predictionMatchesPlayer(item, player.name)) return false;
                       if (!isPower(item.power_name, "Vabank")) return false;
 
-                      const powerMatch = demoMatches.find(
+                      const powerMatch = allTournamentMatches.find(
                         (demoMatch) => demoMatch.id === item.match_id
                       );
 
@@ -3587,7 +3705,7 @@ export default function DashboardPage() {
       const matchId =
         savedPredictionPower?.power_target_match_id ||
         Number(doublePrediction.matchId || 0);
-      const match = demoMatches.find((item) => Number(item.id) === Number(matchId));
+      const match = allTournamentMatches.find((item) => Number(item.id) === Number(matchId));
       const homeScore =
         savedPredictionPower?.power_home_score ??
         (doublePrediction.homeScore !== "" ? Number(doublePrediction.homeScore) : null);
@@ -4865,14 +4983,14 @@ export default function DashboardPage() {
                       Drugi typ:{" "}
                       <strong>
                         {
-                          demoMatches.find(
+                          allTournamentMatches.find(
                             (match) =>
                               match.id === Number(doublePrediction.matchId)
                           )?.teamA
                         }{" "}
                         {doublePrediction.homeScore}:{doublePrediction.awayScore}{" "}
                         {
-                          demoMatches.find(
+                          allTournamentMatches.find(
                             (match) =>
                               match.id === Number(doublePrediction.matchId)
                           )?.teamB
