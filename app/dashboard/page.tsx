@@ -848,7 +848,7 @@ export default function DashboardPage() {
       .filter((match) => {
         const isStarted = hasMatchStarted(match, resultInputNow);
         const isKnockoutBackfill =
-          Boolean(match.isKnockout) &&
+          Boolean((match as any).isKnockout) &&
           isStarted &&
           isAdmin;
         const isMissingPastResult =
