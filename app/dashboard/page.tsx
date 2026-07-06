@@ -72,6 +72,10 @@ type KnockoutFirstRoundMatch = {
   awaySlot: string;
 };
 
+type KnockoutLaterRoundMatch = KnockoutFirstRoundMatch & {
+  stage: string;
+};
+
 const knockoutFirstRoundMatches: KnockoutFirstRoundMatch[] = [
   { id: "M49", date: "29 cze", time: "22:30", homeSlot: "1E", awaySlot: "3A/3B/3C/3D/3F" },
   { id: "M50", date: "30 cze", time: "23:00", homeSlot: "1I", awaySlot: "3C/3D/3F/3G/3H" },
@@ -146,10 +150,37 @@ function normalizeKnockoutMatchDate(date: string) {
   return `${day.padStart(2, "0")}.${month}.2026`;
 }
 
-const knockoutPredictionMatches = knockoutFirstRoundMatches.map((match) => ({
+const knockoutLaterRoundMatches: KnockoutLaterRoundMatch[] = [
+  { id: "M89", stage: "1/8 finału", date: "04.07.2026", time: "23:00", homeSlot: "W74", awaySlot: "W77" },
+  { id: "M90", stage: "1/8 finału", date: "04.07.2026", time: "20:00", homeSlot: "W73", awaySlot: "W75" },
+  { id: "M91", stage: "1/8 finału", date: "05.07.2026", time: "22:00", homeSlot: "W76", awaySlot: "W78" },
+  { id: "M92", stage: "1/8 finału", date: "06.07.2026", time: "03:00", homeSlot: "W79", awaySlot: "W80" },
+  { id: "M93", stage: "1/8 finału", date: "06.07.2026", time: "22:00", homeSlot: "W83", awaySlot: "W84" },
+  { id: "M94", stage: "1/8 finału", date: "07.07.2026", time: "05:00", homeSlot: "W81", awaySlot: "W82" },
+  { id: "M95", stage: "1/8 finału", date: "07.07.2026", time: "18:00", homeSlot: "W86", awaySlot: "W88" },
+  { id: "M96", stage: "1/8 finału", date: "08.07.2026", time: "01:00", homeSlot: "W85", awaySlot: "W87" },
+  { id: "M97", stage: "Ćwierćfinał", date: "09.07.2026", time: "22:00", homeSlot: "W89", awaySlot: "W90" },
+  { id: "M98", stage: "Ćwierćfinał", date: "11.07.2026", time: "00:00", homeSlot: "W93", awaySlot: "W94" },
+  { id: "M99", stage: "Ćwierćfinał", date: "11.07.2026", time: "23:00", homeSlot: "W91", awaySlot: "W92" },
+  { id: "M100", stage: "Ćwierćfinał", date: "12.07.2026", time: "04:00", homeSlot: "W95", awaySlot: "W96" },
+  { id: "M101", stage: "Półfinał", date: "14.07.2026", time: "22:00", homeSlot: "W97", awaySlot: "W98" },
+  { id: "M102", stage: "Półfinał", date: "15.07.2026", time: "21:00", homeSlot: "W99", awaySlot: "W100" },
+  { id: "M103", stage: "Mecz o 3. miejsce", date: "18.07.2026", time: "23:00", homeSlot: "L101", awaySlot: "L102" },
+  { id: "M104", stage: "Finał", date: "19.07.2026", time: "21:00", homeSlot: "W101", awaySlot: "W102" },
+];
+
+const knockoutScheduleMatches: KnockoutLaterRoundMatch[] = [
+  ...knockoutFirstRoundMatches.map((match) => ({
+    ...match,
+    stage: "1/16 finału",
+  })),
+  ...knockoutLaterRoundMatches,
+];
+
+const knockoutPredictionMatches = knockoutScheduleMatches.map((match) => ({
   id: getKnockoutPredictionMatchId(match.id),
   knockoutId: match.id,
-  group: "Drabinka — 1/32 finału",
+  group: `Drabinka — ${match.stage}`,
   date: normalizeKnockoutMatchDate(match.date),
   time: match.time,
   teamA: match.homeSlot,
@@ -158,14 +189,6 @@ const knockoutPredictionMatches = knockoutFirstRoundMatches.map((match) => ({
 }));
 
 const allTournamentMatches = [...demoMatches, ...knockoutPredictionMatches];
-
-const knockoutLaterRounds = [
-  { title: "1/8 finału", items: ["W73 vs W75", "W74 vs W77", "W81 vs W82", "W83 vs W84", "W76 vs W78", "W79 vs W80", "W85 vs W87", "W86 vs W88"] },
-  { title: "Ćwierćfinały", items: ["W89 vs W90", "W93 vs W94", "W91 vs W92", "W95 vs W96"] },
-  { title: "Półfinały", items: ["W97 vs W98", "W99 vs W100"] },
-  { title: "Finał", items: ["W101 vs W102"] },
-  { title: "Mecz o 3. miejsce", items: ["Przegrany półfinału 1 vs przegrany półfinału 2"] },
-];
 
 
 const fullGroupPredictionTableMatches = [
@@ -465,6 +488,20 @@ function isMatchStillVisibleForResultInput(match: { date: string; time?: string 
   const currentTime = now.getTime();
 
   return currentTime >= kickoffTime && currentTime <= visibleUntil;
+}
+
+function hasMatchStarted(match: { date: string; time?: string }, now: Date) {
+  return getMatchKickoffTime(match) <= now.getTime();
+}
+
+function hasCompleteResultForMatch(matchId: number | string, results: ResultsType) {
+  const result = results[Number(matchId)];
+
+  return Boolean(
+    result &&
+      result.homeScore !== "" &&
+      result.awayScore !== ""
+  );
 }
 
 function normalizePowerText(value?: string | null) {
@@ -773,6 +810,9 @@ export default function DashboardPage() {
   const [isMatchOnlyStandingsOpen, setIsMatchOnlyStandingsOpen] = useState(false);
   const [selectedPowerStatsPlayer, setSelectedPowerStatsPlayer] = useState<string | null>(null);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
+  const [manualPredictions, setManualPredictions] = useState<
+    Record<number, Record<string, { homeScore: string; awayScore: string }>>
+  >({});
 
   const router = useRouter();
 
@@ -806,9 +846,20 @@ export default function DashboardPage() {
 
     return allTournamentMatches
       .filter((match) => {
+        const isStarted = hasMatchStarted(match, resultInputNow);
+        const isKnockoutBackfill =
+          Boolean(match.isKnockout) &&
+          isStarted &&
+          isAdmin;
+        const isMissingPastResult =
+          isStarted &&
+          !hasCompleteResultForMatch(match.id, results);
+
         return (
           datesToShow.has(match.date) ||
-          isMatchStillVisibleForResultInput(match, resultInputNow)
+          isMatchStillVisibleForResultInput(match, resultInputNow) ||
+          isMissingPastResult ||
+          isKnockoutBackfill
         );
       })
       .sort((a, b) => {
@@ -818,7 +869,7 @@ export default function DashboardPage() {
 
         return String(a.time || "").localeCompare(String(b.time || ""));
       });
-  }, [currentMatchDate, previousMatchDate]);
+  }, [currentMatchDate, previousMatchDate, results, isAdmin]);
 
 
   const eveningSettlementDate = useMemo(() => {
@@ -1344,31 +1395,14 @@ export default function DashboardPage() {
   };
 
   const bracketPredictionTableMatches = useMemo(() => {
-    const firstRound = knockoutFirstRoundMatches.map((match) => ({
-      id: getKnockoutPredictionMatchId(match.id),
-      group: "Drabinka — 1/32 finału",
-      date: normalizeKnockoutMatchDate(match.date),
+    return knockoutPredictionMatches.map((match) => ({
+      id: match.id,
+      group: match.group,
+      date: match.date,
       time: match.time,
-      teamA: match.homeSlot,
-      teamB: match.awaySlot,
+      teamA: match.teamA,
+      teamB: match.teamB,
     }));
-
-    const laterRounds = knockoutLaterRounds.flatMap((round, roundIndex) =>
-      round.items.map((item, itemIndex) => {
-        const [homeSlot = item, awaySlot = ""] = item.split(" vs ");
-
-        return {
-          id: 1000 + roundIndex * 100 + itemIndex,
-          group: `Drabinka — ${round.title}`,
-          date: "",
-          time: "",
-          teamA: homeSlot,
-          teamB: awaySlot,
-        };
-      })
-    );
-
-    return [...firstRound, ...laterRounds];
   }, []);
 
   const allPredictionTableMatches = useMemo(() => {
@@ -1614,14 +1648,15 @@ export default function DashboardPage() {
 
   const getAvailableTeamsForBracketSlot = (slotId: string) => {
     const selectedTeam = bracketSlots[slotId] || "";
+    const oppositeSlotId = slotId.endsWith("_home")
+      ? slotId.replace(/_home$/, "_away")
+      : slotId.replace(/_away$/, "_home");
+    const oppositeTeam = bracketSlots[oppositeSlotId] || "";
 
     return worldCupTeams.filter((team) => {
       if (team === selectedTeam) return true;
 
-      return !Object.entries(bracketSlots).some(
-        ([otherSlotId, otherTeam]) =>
-          otherSlotId !== slotId && otherTeam === team
-      );
+      return team !== oppositeTeam;
     });
   };
 
@@ -2548,6 +2583,51 @@ export default function DashboardPage() {
     }));
   };
 
+  const getExistingPredictionForPlayer = (matchId: number, playerName: string) => {
+    return allPredictions.find(
+      (prediction) =>
+        prediction.match_id === matchId &&
+        predictionMatchesPlayer(prediction, playerName)
+    );
+  };
+
+  const getManualPredictionValue = (
+    matchId: number,
+    playerName: string,
+    field: "homeScore" | "awayScore"
+  ) => {
+    const manualValue = manualPredictions[matchId]?.[playerName]?.[field];
+
+    if (manualValue !== undefined) return manualValue;
+
+    const existingPrediction = getExistingPredictionForPlayer(matchId, playerName);
+
+    if (!existingPrediction) return "";
+
+    return field === "homeScore"
+      ? String(existingPrediction.home_score)
+      : String(existingPrediction.away_score);
+  };
+
+  const handleManualPredictionChange = (
+    matchId: number,
+    playerName: string,
+    field: "homeScore" | "awayScore",
+    value: string
+  ) => {
+    setManualPredictions((prev) => ({
+      ...prev,
+      [matchId]: {
+        ...(prev[matchId] || {}),
+        [playerName]: {
+          homeScore: prev[matchId]?.[playerName]?.homeScore ?? getManualPredictionValue(matchId, playerName, "homeScore"),
+          awayScore: prev[matchId]?.[playerName]?.awayScore ?? getManualPredictionValue(matchId, playerName, "awayScore"),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
   const handlePodiumChange = (
     field: "firstPlace" | "secondPlace" | "thirdPlace",
     value: string
@@ -3342,18 +3422,32 @@ export default function DashboardPage() {
     alert("Wyniki usunięte!");
   };
 
-  const saveResult = async (matchId: number) => {
+  const saveResult = async (match: any) => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) return;
 
+    const matchId = Number(match.id);
     const result = results[matchId];
 
     if (!result || result.homeScore === "" || result.awayScore === "") {
       alert("Wpisz oba wyniki meczu");
       return;
+    }
+
+    const unresolvedBracketMatches = getUnresolvedBracketMatches([match]);
+
+    if (unresolvedBracketMatches.length > 0) {
+      alert("Najpierw wybierz drużyny w meczu pucharowym, dopiero potem zapisz wynik.");
+      return;
+    }
+
+    if (matchNeedsTeamSelection(match)) {
+      const bracketSaved = await persistKnockoutBracket(false);
+
+      if (!bracketSaved) return;
     }
 
     await supabase.from("results").delete().eq("match_id", matchId);
@@ -3372,6 +3466,83 @@ export default function DashboardPage() {
     }
 
     alert("Wynik zapisany!");
+  };
+
+  const saveManualPredictionsForMatch = async (match: any) => {
+    if (!isAdmin) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const matchId = Number(match.id);
+    const unresolvedBracketMatches = getUnresolvedBracketMatches([match]);
+
+    if (unresolvedBracketMatches.length > 0) {
+      alert("Najpierw wybierz drużyny w meczu pucharowym, dopiero potem zapisz typy z Messengera.");
+      return;
+    }
+
+    if (matchNeedsTeamSelection(match)) {
+      const bracketSaved = await persistKnockoutBracket(false);
+
+      if (!bracketSaved) return;
+    }
+
+    const rows = players
+      .map((player) => {
+        const homeScore = getManualPredictionValue(matchId, player.name, "homeScore");
+        const awayScore = getManualPredictionValue(matchId, player.name, "awayScore");
+
+        if (homeScore === "" || awayScore === "") return null;
+
+        return {
+          user_id: user.id,
+          user_email: getTestEmailForPlayer(player.name),
+          match_id: matchId,
+          home_score: Number(homeScore),
+          away_score: Number(awayScore),
+          power_name: null,
+          power_target_match_id: null,
+          power_home_score: null,
+          power_away_score: null,
+          power_target_team: null,
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (rows.length === 0) {
+      alert("Wpisz przynajmniej jeden pełny typ z Messengera.");
+      return;
+    }
+
+    const playerEmails = rows.map((row) => row.user_email).filter(Boolean);
+
+    const { error: deleteError } = await supabase
+      .from("predictions")
+      .delete()
+      .eq("match_id", matchId)
+      .in("user_email", playerEmails);
+
+    if (deleteError) {
+      console.error(deleteError);
+      alert("Błąd usuwania starych typów z Messengera: " + deleteError.message);
+      return;
+    }
+
+    const { error: insertError } = await supabase.from("predictions").insert(rows);
+
+    if (insertError) {
+      console.error(insertError);
+      alert("Błąd zapisu typów z Messengera: " + insertError.message);
+      return;
+    }
+
+    await loadAllPredictions();
+
+    alert("Typy z Messengera zapisane. Punktacja przeliczy się automatycznie po zapisaniu wyniku meczu.");
   };
 
   const handleLogout = async () => {
@@ -5036,7 +5207,7 @@ export default function DashboardPage() {
                 <strong>
                   {[previousMatchDate, currentMatchDate].filter(Boolean).join(" oraz ")}
                 </strong>
-                . Mecze po rozpoczęciu zostają tu jeszcze przez 12 godzin, żeby dało się wpisać wynik późno w nocy albo rano.
+                . Admin widzi też zaległe mecze pucharowe, żeby dało się dopisać wyniki i typy z Messengera.
               </p>
             </div>
 
@@ -5055,6 +5226,8 @@ export default function DashboardPage() {
 
           {resultInputMatches.map((match) => {
             const displayMatch = getDisplayMatch(match);
+            const homeSlotId = getBracketSlotIdForMatchSide(match.id, "home");
+            const awaySlotId = getBracketSlotIdForMatchSide(match.id, "away");
 
             return (
             <div
@@ -5068,6 +5241,63 @@ export default function DashboardPage() {
                 border: "1px solid rgba(148, 163, 184, 0.18)",
               }}
             >
+              {matchNeedsTeamSelection(match) && (
+                <div
+                  className="result-card"
+                  style={{
+                    padding: "14px",
+                    marginBottom: "16px",
+                    borderRadius: "16px",
+                    background: "rgba(120, 53, 15, 0.28)",
+                    border: "1px solid rgba(250, 204, 21, 0.28)",
+                  }}
+                >
+                  <strong>🏆 Drużyny do tego meczu</strong>
+                  <p className="muted" style={{ margin: "6px 0 10px" }}>
+                    Dla 1/8 finału i dalszych rund wpisujesz pary ręcznie, tak samo jak w 1/16 finału.
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: "10px",
+                    }}
+                  >
+                    {[
+                      { slotId: homeSlotId, label: match.teamA },
+                      { slotId: awaySlotId, label: match.teamB },
+                    ].map((slot) => (
+                      <label key={`result-slot-${slot.slotId}`} style={{ display: "grid", gap: "6px" }}>
+                        <span className="muted">{slot.label}</span>
+                        <select
+                          value={bracketSlots[slot.slotId] || ""}
+                          onChange={(e) =>
+                            handleBracketSlotChange(slot.slotId, e.target.value)
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "12px",
+                            borderRadius: "12px",
+                            border: "1px solid rgba(250, 204, 21, 0.45)",
+                            background: "rgba(15, 23, 42, 0.95)",
+                            color: "white",
+                            fontWeight: 800,
+                          }}
+                        >
+                          <option value="">Wybierz drużynę</option>
+                          {getAvailableTeamsForBracketSlot(slot.slotId).map((team) => (
+                            <option key={`${slot.slotId}-${team}`} value={team}>
+                              {team}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div
                 style={{
                   display: "grid",
@@ -5186,10 +5416,102 @@ export default function DashboardPage() {
               </div>
 
               <div style={{ textAlign: "center", marginTop: "16px" }}>
-                <button className="btn" onClick={() => saveResult(match.id)}>
+                <button className="btn" onClick={() => saveResult(match)}>
                   Zapisz wynik
                 </button>
               </div>
+
+              {isAdmin && (
+                <div
+                  className="result-card"
+                  style={{
+                    marginTop: "16px",
+                    padding: "14px",
+                    borderRadius: "16px",
+                    background: "rgba(2, 6, 23, 0.36)",
+                    border: "1px solid rgba(96, 165, 250, 0.22)",
+                  }}
+                >
+                  <div className="panel-header" style={{ marginBottom: "10px" }}>
+                    <div>
+                      <strong>📝 Typy z Messengera</strong>
+                      <p className="muted" style={{ margin: "6px 0 0" }}>
+                        Wpisz zaległe typy graczy dla tego meczu. Po zapisaniu wyniku tabela przeliczy punkty automatycznie.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      onClick={() => saveManualPredictionsForMatch(match)}
+                    >
+                      Zapisz typy
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    {players.map((player) => {
+                      const matchPoints = calculateMatchPointsForPlayer(match, player.name);
+
+                      return (
+                        <div
+                          key={`manual-${match.id}-${player.name}`}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "minmax(84px, 1fr) auto auto minmax(56px, auto)",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <strong>{player.name}</strong>
+
+                          <input
+                            type="number"
+                            value={getManualPredictionValue(match.id, player.name, "homeScore")}
+                            onChange={(e) =>
+                              handleManualPredictionChange(match.id, player.name, "homeScore", e.target.value)
+                            }
+                            placeholder="0"
+                            style={{
+                              width: "52px",
+                              padding: "9px",
+                              borderRadius: "10px",
+                              border: "1px solid rgba(96, 165, 250, 0.5)",
+                              background: "rgba(15, 23, 42, 0.95)",
+                              color: "white",
+                              fontWeight: 800,
+                              textAlign: "center",
+                            }}
+                          />
+
+                          <input
+                            type="number"
+                            value={getManualPredictionValue(match.id, player.name, "awayScore")}
+                            onChange={(e) =>
+                              handleManualPredictionChange(match.id, player.name, "awayScore", e.target.value)
+                            }
+                            placeholder="0"
+                            style={{
+                              width: "52px",
+                              padding: "9px",
+                              borderRadius: "10px",
+                              border: "1px solid rgba(96, 165, 250, 0.5)",
+                              background: "rgba(15, 23, 42, 0.95)",
+                              color: "white",
+                              fontWeight: 800,
+                              textAlign: "center",
+                            }}
+                          />
+
+                          <span className="muted" style={{ textAlign: "right", fontWeight: 800 }}>
+                            {matchPoints === null ? "—" : `${matchPoints} pkt`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             );
           })}
@@ -5953,7 +6275,7 @@ export default function DashboardPage() {
             <div>
               <h2>🏆 Drabinka fazy pucharowej</h2>
               <p className="muted" style={{ marginTop: "6px" }}>
-                W 1/16 finału wybieracie drużyny ręcznie. Kolejne rundy są połączone kreskami i będą później uzupełniane automatycznie po wyborze zwycięzców.
+                Drużyny wybieracie ręcznie w całej drabince: 1/16, 1/8, ćwierćfinały, półfinały, finał i mecz o 3. miejsce.
               </p>
             </div>
 
@@ -5965,15 +6287,6 @@ export default function DashboardPage() {
           {(() => {
             const leftMatches = knockoutFirstRoundMatches.slice(0, 8);
             const rightMatches = knockoutFirstRoundMatches.slice(8);
-
-            const shield = (
-              <svg className="wc-shield" viewBox="0 0 24 28" aria-hidden="true">
-                <path
-                  d="M12 2L21 5V12C21 18.2 17.4 23.6 12 26C6.6 23.6 3 18.2 3 12V5L12 2Z"
-                  fill="currentColor"
-                />
-              </svg>
-            );
 
             const drawConnector = (
               fromX: number,
@@ -6063,22 +6376,20 @@ export default function DashboardPage() {
               drawConnector(1190, ySf, yFinal, 1156, "rsf"),
             ];
 
-            const renderFirstRoundCard = (
-              match: KnockoutFirstRoundMatch,
-              index: number,
-              side: "left" | "right"
+            const renderBracketMatchCard = (
+              match: KnockoutFirstRoundMatch & { stage?: string },
+              column: number,
+              row: string,
+              className = "wc-bracket-card"
             ) => {
-              const column = side === "left" ? 1 : 9;
-              const row = index * 2 + 1;
-
               return (
                 <div
                   key={match.id}
-                  className="wc-bracket-card"
-                  style={{ gridColumn: column, gridRow: `${row} / span 2` }}
+                  className={className}
+                  style={{ gridColumn: column, gridRow: row }}
                 >
                   <div className="wc-match-meta">
-                    <span>{match.date}</span>
+                    <span>{match.stage || "1/16 finału"} · {match.date}</span>
                     <span>{match.time}</span>
                   </div>
 
@@ -6113,31 +6424,6 @@ export default function DashboardPage() {
               );
             };
 
-            const renderEmptyCard = (
-              key: string,
-              column: number,
-              row: string,
-              date: string,
-              time: string,
-              homeText: string,
-              awayText: string
-            ) => (
-              <div
-                key={key}
-                className="wc-bracket-card empty"
-                style={{ gridColumn: column, gridRow: row }}
-              >
-                <div className="wc-match-meta">
-                  <span>{date}</span>
-                  <span>{time}</span>
-                </div>
-                <div className="wc-placeholder">
-                  <div className="wc-placeholder-line">{shield}<span>{homeText}</span></div>
-                  <div className="wc-placeholder-line">{shield}<span>{awayText}</span></div>
-                </div>
-              </div>
-            );
-
             return (
               <div className="bracket-scroll">
             <div className="bracket-board">
@@ -6147,63 +6433,52 @@ export default function DashboardPage() {
                 </svg>
 
                 {leftMatches.map((match, index) =>
-                  renderFirstRoundCard(match, index, "left")
-                )}
-
-                {rightMatches.map((match, index) =>
-                  renderFirstRoundCard(match, index, "right")
-                )}
-
-                {[
-                  ["L16-1", 2, "2 / span 2", "4 lip", "23:00", "Zwycięzca pary 1", "Zwycięzca pary 2"],
-                  ["L16-2", 2, "6 / span 2", "4 lip", "19:00", "Zwycięzca pary 3", "Zwycięzca pary 4"],
-                  ["L16-3", 2, "10 / span 2", "6 lip", "21:00", "Zwycięzca pary 5", "Zwycięzca pary 6"],
-                  ["L16-4", 2, "14 / span 2", "7 lip", "02:00", "Zwycięzca pary 7", "Zwycięzca pary 8"],
-                  ["R16-1", 8, "2 / span 2", "5 lip", "22:00", "Zwycięzca pary 9", "Zwycięzca pary 10"],
-                  ["R16-2", 8, "6 / span 2", "6 lip", "02:00", "Zwycięzca pary 11", "Zwycięzca pary 12"],
-                  ["R16-3", 8, "10 / span 2", "7 lip", "18:00", "Zwycięzca pary 13", "Zwycięzca pary 14"],
-                  ["R16-4", 8, "14 / span 2", "7 lip", "22:00", "Zwycięzca pary 15", "Zwycięzca pary 16"],
-                  ["LQF-1", 3, "4 / span 2", "9 lip", "22:00", "Zwycięzca 1/8", "Zwycięzca 1/8"],
-                  ["LQF-2", 3, "12 / span 2", "10 lip", "21:00", "Zwycięzca 1/8", "Zwycięzca 1/8"],
-                  ["RQF-1", 7, "4 / span 2", "11 lip", "23:00", "Zwycięzca 1/8", "Zwycięzca 1/8"],
-                  ["RQF-2", 7, "12 / span 2", "12 lip", "03:00", "Zwycięzca 1/8", "Zwycięzca 1/8"],
-                  ["LSF", 4, "7 / span 4", "14 lip", "21:00", "Zwycięzca ćwierćfinału", "Zwycięzca ćwierćfinału"],
-                  ["RSF", 6, "7 / span 4", "15 lip", "21:00", "Zwycięzca ćwierćfinału", "Zwycięzca ćwierćfinału"],
-                ].map((item) =>
-                  renderEmptyCard(
-                    item[0] as string,
-                    item[1] as number,
-                    item[2] as string,
-                    item[3] as string,
-                    item[4] as string,
-                    item[5] as string,
-                    item[6] as string
+                  renderBracketMatchCard(
+                    { ...match, stage: "1/16 finału" },
+                    1,
+                    `${index * 2 + 1} / span 2`
                   )
                 )}
 
-                <div
-                  className="wc-bracket-card final"
-                  style={{ gridColumn: 5, gridRow: "6 / span 5" }}
-                >
-                  <div className="wc-final-title">Finał</div>
-                  <div className="wc-final-time">19 lip · 21:00</div>
-                  <div className="wc-placeholder" style={{ marginTop: "12px" }}>
-                    <div className="wc-placeholder-line">{shield}<span>Zwycięzca półfinału</span></div>
-                    <div className="wc-placeholder-line">{shield}<span>Zwycięzca półfinału</span></div>
-                  </div>
-                </div>
+                {rightMatches.map((match, index) =>
+                  renderBracketMatchCard(
+                    { ...match, stage: "1/16 finału" },
+                    9,
+                    `${index * 2 + 1} / span 2`
+                  )
+                )}
 
-                <div
-                  className="wc-bracket-card empty"
-                  style={{ gridColumn: 5, gridRow: "12 / span 3" }}
-                >
-                  <div className="wc-third-place">
-                    <strong>🥉 Mecz o 3. miejsce</strong>
-                    <p className="muted" style={{ margin: "6px 0 0" }}>
-                      Dwaj przegrani półfinałów
-                    </p>
-                  </div>
-                </div>
+                {[
+                  ["M90", 2, "2 / span 2"],
+                  ["M89", 2, "6 / span 2"],
+                  ["M94", 2, "10 / span 2"],
+                  ["M93", 2, "14 / span 2"],
+                  ["M91", 8, "2 / span 2"],
+                  ["M92", 8, "6 / span 2"],
+                  ["M96", 8, "10 / span 2"],
+                  ["M95", 8, "14 / span 2"],
+                  ["M97", 3, "4 / span 2"],
+                  ["M98", 3, "12 / span 2"],
+                  ["M99", 7, "4 / span 2"],
+                  ["M100", 7, "12 / span 2"],
+                  ["M101", 4, "7 / span 4"],
+                  ["M102", 6, "7 / span 4"],
+                  ["M104", 5, "6 / span 5", "wc-bracket-card final"],
+                  ["M103", 5, "12 / span 3", "wc-bracket-card empty"],
+                ].map((item) => {
+                  const match = knockoutLaterRoundMatches.find(
+                    (laterMatch) => laterMatch.id === item[0]
+                  );
+
+                  if (!match) return null;
+
+                  return renderBracketMatchCard(
+                    match,
+                    item[1] as number,
+                    item[2] as string,
+                    (item[3] as string) || "wc-bracket-card empty"
+                  );
+                })}
               </div>
             </div>
           </div>
