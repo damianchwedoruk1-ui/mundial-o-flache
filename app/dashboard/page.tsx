@@ -67,6 +67,8 @@ const flags: Record<string, string> = {
 type KnockoutFirstRoundMatch = {
   id: string;
   date: string;
+  displayDate?: string;
+  kickoffDate?: string;
   time: string;
   homeSlot: string;
   awaySlot: string;
@@ -158,7 +160,7 @@ const knockoutLaterRoundMatches: KnockoutLaterRoundMatch[] = [
   { id: "M93", stage: "1/8 finału", date: "06.07.2026", time: "22:00", homeSlot: "W83", awaySlot: "W84" },
   { id: "M94", stage: "1/8 finału", date: "07.07.2026", time: "05:00", homeSlot: "W81", awaySlot: "W82" },
   { id: "M95", stage: "1/8 finału", date: "07.07.2026", time: "18:00", homeSlot: "W86", awaySlot: "W88" },
-  { id: "M96", stage: "1/8 finału", date: "08.07.2026", time: "01:00", homeSlot: "W85", awaySlot: "W87" },
+  { id: "M96", stage: "1/8 finału", date: "07.07.2026", displayDate: "08.07.2026", kickoffDate: "08.07.2026", time: "01:00", homeSlot: "W85", awaySlot: "W87" },
   { id: "M97", stage: "Ćwierćfinał", date: "09.07.2026", time: "22:00", homeSlot: "W89", awaySlot: "W90" },
   { id: "M98", stage: "Ćwierćfinał", date: "11.07.2026", time: "00:00", homeSlot: "W93", awaySlot: "W94" },
   { id: "M99", stage: "Ćwierćfinał", date: "11.07.2026", time: "23:00", homeSlot: "W91", awaySlot: "W92" },
@@ -182,6 +184,8 @@ const knockoutPredictionMatches = knockoutScheduleMatches.map((match) => ({
   knockoutId: match.id,
   group: `Drabinka — ${match.stage}`,
   date: normalizeKnockoutMatchDate(match.date),
+  displayDate: match.displayDate ? normalizeKnockoutMatchDate(match.displayDate) : undefined,
+  kickoffDate: match.kickoffDate ? normalizeKnockoutMatchDate(match.kickoffDate) : undefined,
   time: match.time,
   teamA: match.homeSlot,
   teamB: match.awaySlot,
@@ -424,6 +428,7 @@ type DailyPowerType = {
 // MICHAL_POWER_USED_FIX_2026_06_24: normalizacja ł->l i dopasowanie po test.pl, aby Michałowi poprawnie blokowało wykorzystane moce
 // KNOCKOUT_MANUAL_SQL_ONLY_FIX_2026_06_28: drabinka zostaje w normalnym oknie 20:00-23:59; zalegly typ tylko przez SQL, pelna tabela sortowana data+godzina
 // KNOCKOUT_BETTING_RLS_FIX_2026_06_28: mecze drabinki w typowaniu + zapis slotow przez upsert
+// KNOCKOUT_1_8_MATCHDAY_FIX_2026_07_06: M94, M95 i nocny M96 sa jednym dniem typowania 07.07, M96 wyswietla i startuje z realna data 08.07; okno 07.07 jest awaryjnie otwarte od 00:00 do 23:59 dnia poprzedniego
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -468,8 +473,8 @@ function getMatchDateTime(value: string) {
   return parseMatchDate(value).getTime();
 }
 
-function getMatchKickoffTime(match: { date: string; time?: string }) {
-  const kickoff = parseMatchDate(match.date);
+function getMatchKickoffTime(match: { date: string; displayDate?: string; kickoffDate?: string; time?: string }) {
+  const kickoff = parseMatchDate(match.kickoffDate || match.displayDate || match.date);
   const [hoursValue, minutesValue] = String(match.time || "00:00")
     .split(":")
     .map(Number);
@@ -490,7 +495,7 @@ function isMatchStillVisibleForResultInput(match: { date: string; time?: string 
   return currentTime >= kickoffTime && currentTime <= visibleUntil;
 }
 
-function hasMatchStarted(match: { date: string; time?: string }, now: Date) {
+function hasMatchStarted(match: { date: string; displayDate?: string; kickoffDate?: string; time?: string }, now: Date) {
   return getMatchKickoffTime(match) <= now.getTime();
 }
 
@@ -572,11 +577,18 @@ function formatShortDate(date: Date) {
   });
 }
 
+const extendedBettingMatchDates = new Set(["07.07.2026"]);
+
 function getBettingWindow(matchDate: string) {
   const matchDay = parseMatchDate(matchDate);
   const opensAt = new Date(matchDay);
   opensAt.setDate(opensAt.getDate() - 1);
-  opensAt.setHours(20, 0, 0, 0);
+  opensAt.setHours(
+    extendedBettingMatchDates.has(matchDate) ? 0 : 20,
+    0,
+    0,
+    0
+  );
 
   const closesAt = new Date(matchDay);
   closesAt.setDate(closesAt.getDate() - 1);
@@ -591,8 +603,8 @@ function sortMatchesByDateTime<T extends { date?: string; time?: string; id?: nu
     const bHasDate = Boolean(b.date);
 
     if (aHasDate && bHasDate) {
-      const aTime = getMatchKickoffTime({ date: String(a.date), time: a.time });
-      const bTime = getMatchKickoffTime({ date: String(b.date), time: b.time });
+      const aTime = getMatchKickoffTime(a as any);
+      const bTime = getMatchKickoffTime(b as any);
 
       if (aTime !== bTime) return aTime - bTime;
     }
@@ -862,13 +874,7 @@ export default function DashboardPage() {
           isKnockoutBackfill
         );
       })
-      .sort((a, b) => {
-        const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
-
-        if (dateDiff !== 0) return dateDiff;
-
-        return String(a.time || "").localeCompare(String(b.time || ""));
-      });
+      .sort((a, b) => getMatchKickoffTime(a as any) - getMatchKickoffTime(b as any));
   }, [currentMatchDate, previousMatchDate, results, isAdmin]);
 
 
@@ -1425,13 +1431,7 @@ export default function DashboardPage() {
 
     return allTournamentMatches
       .filter((match) => datesToShow.has(match.date))
-      .sort((a, b) => {
-        const dateDiff = getMatchDateTime(a.date) - getMatchDateTime(b.date);
-
-        if (dateDiff !== 0) return dateDiff;
-
-        return String(a.time || "").localeCompare(String(b.time || ""));
-      });
+      .sort((a, b) => getMatchKickoffTime(a as any) - getMatchKickoffTime(b as any));
   }, [currentMatchDate, previousMatchDate]);
 
   const resolvePredictionTableMatch = (match: any) => {
@@ -1468,6 +1468,7 @@ export default function DashboardPage() {
 
   const getDisplayMatch = (match: any) => ({
     ...match,
+    date: match.displayDate || match.date,
     teamA: getResolvedMatchTeam(match, "home"),
     teamB: getResolvedMatchTeam(match, "away"),
   });
@@ -6389,7 +6390,7 @@ export default function DashboardPage() {
                   style={{ gridColumn: column, gridRow: row }}
                 >
                   <div className="wc-match-meta">
-                    <span>{match.stage || "1/16 finału"} · {match.date}</span>
+                    <span>{match.stage || "1/16 finału"} · {match.displayDate || match.date}</span>
                     <span>{match.time}</span>
                   </div>
 
