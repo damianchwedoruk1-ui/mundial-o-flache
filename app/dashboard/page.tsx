@@ -162,7 +162,7 @@ const knockoutLaterRoundMatches: KnockoutLaterRoundMatch[] = [
   { id: "M95", stage: "1/8 finału", date: "07.07.2026", time: "18:00", homeSlot: "W86", awaySlot: "W88" },
   { id: "M96", stage: "1/8 finału", date: "07.07.2026", time: "22:00", homeSlot: "W85", awaySlot: "W87" },
   { id: "M97", stage: "Ćwierćfinał", date: "09.07.2026", time: "22:00", homeSlot: "W89", awaySlot: "W90" },
-  { id: "M98", stage: "Ćwierćfinał", date: "11.07.2026", time: "00:00", homeSlot: "W93", awaySlot: "W94" },
+  { id: "M98", stage: "Ćwierćfinał", date: "10.07.2026", time: "21:00", homeSlot: "W93", awaySlot: "W94" },
   { id: "M99", stage: "Ćwierćfinał", date: "11.07.2026", time: "23:00", homeSlot: "W91", awaySlot: "W92" },
   { id: "M100", stage: "Ćwierćfinał", date: "12.07.2026", time: "04:00", homeSlot: "W95", awaySlot: "W96" },
   { id: "M101", stage: "Półfinał", date: "14.07.2026", time: "22:00", homeSlot: "W97", awaySlot: "W98" },
@@ -429,6 +429,7 @@ type DailyPowerType = {
 // KNOCKOUT_MANUAL_SQL_ONLY_FIX_2026_06_28: drabinka zostaje w normalnym oknie 20:00-23:59; zalegly typ tylko przez SQL, pelna tabela sortowana data+godzina
 // KNOCKOUT_BETTING_RLS_FIX_2026_06_28: mecze drabinki w typowaniu + zapis slotow przez upsert
 // KNOCKOUT_1_8_MATCHDAY_FIX_2026_07_06: ostatnie 3 mecze 1/8 sa jednym dniem typowania 07.07; M94 02:00, M95 18:00, M96 22:00; okno 07.07 jest awaryjnie otwarte od 00:00 do 23:59 dnia poprzedniego
+// KNOCKOUT_M98_DATE_FIX_2026_07_09: M98 W93-W94 przeniesiony na 10.07.2026 21:00; okno 10.07 awaryjnie otwarte od 00:00 do 23:59 dnia poprzedniego
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -577,7 +578,7 @@ function formatShortDate(date: Date) {
   });
 }
 
-const extendedBettingMatchDates = new Set(["07.07.2026"]);
+const extendedBettingMatchDates = new Set(["07.07.2026", "10.07.2026"]);
 
 function getBettingWindow(matchDate: string) {
   const matchDay = parseMatchDate(matchDate);
