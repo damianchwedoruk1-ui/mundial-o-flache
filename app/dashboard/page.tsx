@@ -823,9 +823,6 @@ export default function DashboardPage() {
   const [isMatchOnlyStandingsOpen, setIsMatchOnlyStandingsOpen] = useState(false);
   const [selectedPowerStatsPlayer, setSelectedPowerStatsPlayer] = useState<string | null>(null);
   const [bracketSlots, setBracketSlots] = useState<Record<string, string>>({});
-  const [manualPredictions, setManualPredictions] = useState<
-    Record<number, Record<string, { homeScore: string; awayScore: string }>>
-  >({});
 
   const router = useRouter();
 
@@ -2585,51 +2582,6 @@ export default function DashboardPage() {
     }));
   };
 
-  const getExistingPredictionForPlayer = (matchId: number, playerName: string) => {
-    return allPredictions.find(
-      (prediction) =>
-        prediction.match_id === matchId &&
-        predictionMatchesPlayer(prediction, playerName)
-    );
-  };
-
-  const getManualPredictionValue = (
-    matchId: number,
-    playerName: string,
-    field: "homeScore" | "awayScore"
-  ) => {
-    const manualValue = manualPredictions[matchId]?.[playerName]?.[field];
-
-    if (manualValue !== undefined) return manualValue;
-
-    const existingPrediction = getExistingPredictionForPlayer(matchId, playerName);
-
-    if (!existingPrediction) return "";
-
-    return field === "homeScore"
-      ? String(existingPrediction.home_score)
-      : String(existingPrediction.away_score);
-  };
-
-  const handleManualPredictionChange = (
-    matchId: number,
-    playerName: string,
-    field: "homeScore" | "awayScore",
-    value: string
-  ) => {
-    setManualPredictions((prev) => ({
-      ...prev,
-      [matchId]: {
-        ...(prev[matchId] || {}),
-        [playerName]: {
-          homeScore: prev[matchId]?.[playerName]?.homeScore ?? getManualPredictionValue(matchId, playerName, "homeScore"),
-          awayScore: prev[matchId]?.[playerName]?.awayScore ?? getManualPredictionValue(matchId, playerName, "awayScore"),
-          [field]: value,
-        },
-      },
-    }));
-  };
-
   const handlePodiumChange = (
     field: "firstPlace" | "secondPlace" | "thirdPlace",
     value: string
@@ -3468,83 +3420,6 @@ export default function DashboardPage() {
     }
 
     alert("Wynik zapisany!");
-  };
-
-  const saveManualPredictionsForMatch = async (match: any) => {
-    if (!isAdmin) return;
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const matchId = Number(match.id);
-    const unresolvedBracketMatches = getUnresolvedBracketMatches([match]);
-
-    if (unresolvedBracketMatches.length > 0) {
-      alert("Najpierw wybierz drużyny w meczu pucharowym, dopiero potem zapisz typy z Messengera.");
-      return;
-    }
-
-    if (matchNeedsTeamSelection(match)) {
-      const bracketSaved = await persistKnockoutBracket(false);
-
-      if (!bracketSaved) return;
-    }
-
-    const rows = players
-      .map((player) => {
-        const homeScore = getManualPredictionValue(matchId, player.name, "homeScore");
-        const awayScore = getManualPredictionValue(matchId, player.name, "awayScore");
-
-        if (homeScore === "" || awayScore === "") return null;
-
-        return {
-          user_id: user.id,
-          user_email: getTestEmailForPlayer(player.name),
-          match_id: matchId,
-          home_score: Number(homeScore),
-          away_score: Number(awayScore),
-          power_name: null,
-          power_target_match_id: null,
-          power_home_score: null,
-          power_away_score: null,
-          power_target_team: null,
-        };
-      })
-      .filter(Boolean) as any[];
-
-    if (rows.length === 0) {
-      alert("Wpisz przynajmniej jeden pełny typ z Messengera.");
-      return;
-    }
-
-    const playerEmails = rows.map((row) => row.user_email).filter(Boolean);
-
-    const { error: deleteError } = await supabase
-      .from("predictions")
-      .delete()
-      .eq("match_id", matchId)
-      .in("user_email", playerEmails);
-
-    if (deleteError) {
-      console.error(deleteError);
-      alert("Błąd usuwania starych typów z Messengera: " + deleteError.message);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("predictions").insert(rows);
-
-    if (insertError) {
-      console.error(insertError);
-      alert("Błąd zapisu typów z Messengera: " + insertError.message);
-      return;
-    }
-
-    await loadAllPredictions();
-
-    alert("Typy z Messengera zapisane. Punktacja przeliczy się automatycznie po zapisaniu wyniku meczu.");
   };
 
   const handleLogout = async () => {
@@ -5209,7 +5084,7 @@ export default function DashboardPage() {
                 <strong>
                   {[previousMatchDate, currentMatchDate].filter(Boolean).join(" oraz ")}
                 </strong>
-                . Admin widzi też zaległe mecze pucharowe, żeby dało się dopisać wyniki i typy z Messengera.
+                . Admin widzi też zaległe mecze pucharowe, żeby dało się dopisać wyniki.
               </p>
             </div>
 
@@ -5423,97 +5298,6 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {isAdmin && (
-                <div
-                  className="result-card"
-                  style={{
-                    marginTop: "16px",
-                    padding: "14px",
-                    borderRadius: "16px",
-                    background: "rgba(2, 6, 23, 0.36)",
-                    border: "1px solid rgba(96, 165, 250, 0.22)",
-                  }}
-                >
-                  <div className="panel-header" style={{ marginBottom: "10px" }}>
-                    <div>
-                      <strong>📝 Typy z Messengera</strong>
-                      <p className="muted" style={{ margin: "6px 0 0" }}>
-                        Wpisz zaległe typy graczy dla tego meczu. Po zapisaniu wyniku tabela przeliczy punkty automatycznie.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      onClick={() => saveManualPredictionsForMatch(match)}
-                    >
-                      Zapisz typy
-                    </button>
-                  </div>
-
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    {players.map((player) => {
-                      const matchPoints = calculateMatchPointsForPlayer(match, player.name);
-
-                      return (
-                        <div
-                          key={`manual-${match.id}-${player.name}`}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "minmax(84px, 1fr) auto auto minmax(56px, auto)",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          <strong>{player.name}</strong>
-
-                          <input
-                            type="number"
-                            value={getManualPredictionValue(match.id, player.name, "homeScore")}
-                            onChange={(e) =>
-                              handleManualPredictionChange(match.id, player.name, "homeScore", e.target.value)
-                            }
-                            placeholder="0"
-                            style={{
-                              width: "52px",
-                              padding: "9px",
-                              borderRadius: "10px",
-                              border: "1px solid rgba(96, 165, 250, 0.5)",
-                              background: "rgba(15, 23, 42, 0.95)",
-                              color: "white",
-                              fontWeight: 800,
-                              textAlign: "center",
-                            }}
-                          />
-
-                          <input
-                            type="number"
-                            value={getManualPredictionValue(match.id, player.name, "awayScore")}
-                            onChange={(e) =>
-                              handleManualPredictionChange(match.id, player.name, "awayScore", e.target.value)
-                            }
-                            placeholder="0"
-                            style={{
-                              width: "52px",
-                              padding: "9px",
-                              borderRadius: "10px",
-                              border: "1px solid rgba(96, 165, 250, 0.5)",
-                              background: "rgba(15, 23, 42, 0.95)",
-                              color: "white",
-                              fontWeight: 800,
-                              textAlign: "center",
-                            }}
-                          />
-
-                          <span className="muted" style={{ textAlign: "right", fontWeight: 800 }}>
-                            {matchPoints === null ? "—" : `${matchPoints} pkt`}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
             );
           })}
