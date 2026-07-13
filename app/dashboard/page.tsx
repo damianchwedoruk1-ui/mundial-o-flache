@@ -430,7 +430,7 @@ type DailyPowerType = {
 // KNOCKOUT_BETTING_RLS_FIX_2026_06_28: mecze drabinki w typowaniu + zapis slotow przez upsert
 // KNOCKOUT_1_8_MATCHDAY_FIX_2026_07_06: ostatnie 3 mecze 1/8 sa jednym dniem typowania 07.07; M94 02:00, M95 18:00, M96 22:00; okno 07.07 jest awaryjnie otwarte od 00:00 do 23:59 dnia poprzedniego
 // KNOCKOUT_M98_DATE_FIX_2026_07_09: M98 W93-W94 przeniesiony na 10.07.2026 21:00; okno 10.07 awaryjnie otwarte od 00:00 do 23:59 dnia poprzedniego
-// RESULT_INPUT_LIMIT_FIX_2026_07_09: panel Wyniki meczów pokazuje tylko aktualny dzień typowania i poprzedni nierozliczony dzień do 20:00
+// DAILY_POINTS_GAP_DAY_FIX_2026_07_13: w dzień bez meczu rozlicza się ostatni rozegrany dzień, a bieżące punkty pokazują następny dzień meczowy
 type PowerLogType = {
   id: string;
   matchDate: string;
@@ -741,16 +741,9 @@ function getDailyPointsTableDates(matches: any[], now: Date) {
     };
   }
 
-  if (afterEveningSettlement) {
-    return {
-      settlementDate: dates[latestPastIndex] || "",
-      liveDate: dates[latestPastIndex + 1] || "",
-    };
-  }
-
   return {
-    settlementDate: dates[latestPastIndex - 1] || "",
-    liveDate: dates[latestPastIndex] || "",
+    settlementDate: dates[latestPastIndex] || "",
+    liveDate: dates[latestPastIndex + 1] || "",
   };
 }
 
@@ -845,23 +838,23 @@ export default function DashboardPage() {
 
   const resultInputMatches = useMemo(() => {
     const resultInputNow = new Date();
-    const datesToShow = new Set<string>();
-
-    if (currentMatchDate) {
-      datesToShow.add(currentMatchDate);
-    }
-
-    if (previousMatchDate) {
-      const isBeforeSettlement = resultInputNow.getHours() < 20;
-      const previousDayUnsettled = !isFullMatchDateFinished(previousMatchDate, results);
-
-      if (isBeforeSettlement || previousDayUnsettled) {
-        datesToShow.add(previousMatchDate);
-      }
-    }
+    const afterEveningSettlement = resultInputNow.getHours() >= 20;
 
     return allTournamentMatches
-      .filter((match) => datesToShow.has(match.date))
+      .filter((match) => {
+        if (previousMatchDate && match.date === previousMatchDate) {
+          return (
+            !afterEveningSettlement ||
+            !hasCompleteResultForMatch(match.id, results)
+          );
+        }
+
+        if (currentMatchDate && match.date === currentMatchDate) {
+          return true;
+        }
+
+        return false;
+      })
       .sort((a, b) => getMatchKickoffTime(a as any) - getMatchKickoffTime(b as any));
   }, [currentMatchDate, previousMatchDate, results]);
 
@@ -5070,11 +5063,11 @@ export default function DashboardPage() {
               <h2>📈 Wyniki meczów</h2>
 
               <p className="muted" style={{ marginTop: "6px" }}>
-                Pokazuję tylko aktualny dzień typowania oraz poprzedni dzień meczowy do rozliczenia:{" "}
+                Uzupełnij wyniki dla poprzedniego i aktualnego dnia meczowego:{" "}
                 <strong>
-                  {Array.from(new Set(resultInputMatches.map((match) => match.date))).filter(Boolean).join(" oraz ") || "brak meczów"}
+                  {[previousMatchDate, currentMatchDate].filter(Boolean).join(" oraz ")}
                 </strong>
-                . Poprzedni dzień znika po 20:00, jeżeli ma już wpisane wszystkie wyniki.
+                . Po 20:00 poprzedni dzień znika, jeśli ma wpisane wszystkie wyniki.
               </p>
             </div>
 
